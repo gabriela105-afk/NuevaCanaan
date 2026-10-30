@@ -1,0 +1,118 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Comunicados{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Comunicados</h1>
+      <p>Publique avisos oficiales, guárdelos como borrador o archívelos cuando ya no sean vigentes.</p>
+    </div>
+    <a class="btn btn--primary btn--sm" href="{{ url_for('admin.announcement_new') }}">Nuevo comunicado</a>
+  </div>
+
+  <form class="filters" method="get" action="{{ url_for('admin.announcements') }}">
+    <div class="field">
+      <label for="q">Buscar</label>
+      <input type="search" id="q" name="q" value="{{ search }}" placeholder="Título o contenido">
+    </div>
+    <div class="field">
+      <label for="estado">Estado</label>
+      <select id="estado" name="estado">
+        <option value="">Todos</option>
+        {% for item in statuses %}
+          <option value="{{ item }}" {% if item == status %}selected{% endif %}>{{ ANNOUNCEMENT_STATUS_LABELS.get(item, item) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="categoria">Categoría</label>
+      <select id="categoria" name="categoria">
+        <option value="">Todas</option>
+        {% for item in categories %}
+          <option value="{{ item }}" {% if item == category %}selected{% endif %}>{{ ANNOUNCEMENT_CATEGORY_LABELS.get(item, item) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.announcements') }}">Limpiar</a>
+  </form>
+
+  {% if announcements %}
+    <div class="table-wrap">
+      <table class="data">
+        <caption>{{ pagination.total }} comunicado(s)</caption>
+        <thead>
+          <tr>
+            <th scope="col">Título</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Prioridad</th>
+            <th scope="col">Publicación</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for announcement in announcements %}
+            <tr>
+              <td>
+                {% if announcement.is_pinned %}<span class="badge badge--gold">Fijado</span> {% endif %}
+                <a href="{{ url_for('admin.announcement_edit', announcement_id=announcement.id) }}">{{ announcement.title|truncate(56) }}</a>
+                <br><span class="small muted">{{ announcement.category_label }} · {{ announcement.audience_label }}</span>
+              </td>
+              <td>
+                <span class="badge {{ 'badge--success' if announcement.status == 'published' else ('badge--warning' if announcement.status == 'draft' else 'badge--muted') }}">
+                  {{ announcement.status_label }}
+                </span>
+                {% if announcement.is_expired %}<br><span class="badge badge--danger">Vencido</span>{% endif %}
+              </td>
+              <td><span class="badge badge--{{ announcement.priority }}">{{ announcement.priority_label }}</span></td>
+              <td>{{ announcement.published_at|date if announcement.published_at else '—' }}</td>
+              <td>
+                <div class="actions">
+                  <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.announcement_edit', announcement_id=announcement.id) }}">Editar</a>
+                  {% if announcement.status != 'published' %}
+                    <form method="post" action="{{ url_for('admin.announcement_publish', announcement_id=announcement.id) }}"
+                          data-confirm="¿Publicar y notificar «{{ announcement.title }}»?">
+                      {{ csrf_field() }}
+                      <button class="btn btn--primary btn--sm" type="submit">Publicar</button>
+                    </form>
+                  {% else %}
+                    <form method="post" action="{{ url_for('admin.announcement_archive', announcement_id=announcement.id) }}"
+                          data-confirm="¿Archivar «{{ announcement.title }}»? Dejará de mostrarse.">
+                      {{ csrf_field() }}
+                      <button class="btn btn--ghost btn--sm" type="submit">Archivar</button>
+                    </form>
+                  {% endif %}
+                  <form method="post" action="{{ url_for('admin.announcement_pin', announcement_id=announcement.id) }}">
+                    {{ csrf_field() }}
+                    <button class="btn btn--ghost btn--sm" type="submit">
+                      {{ 'Quitar fijado' if announcement.is_pinned else 'Fijar' }}
+                    </button>
+                  </form>
+                  {% if current_user.role == 'admin' %}
+                    <form method="post" action="{{ url_for('admin.announcement_delete', announcement_id=announcement.id) }}"
+                          data-confirm="¿Eliminar definitivamente «{{ announcement.title }}»?">
+                      {{ csrf_field() }}
+                      <button class="btn btn--danger btn--sm" type="submit">Eliminar</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% set endpoint = 'admin.announcements' %}
+    {% set extra = {'estado': status, 'categoria': category, 'q': search} %}
+    {% include "partials/_pagination.html" with context %}
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin comunicados</h3>
+      <p class="mb-0">Cree el primer comunicado oficial de la institución.</p>
+      <a class="btn btn--primary btn--sm" href="{{ url_for('admin.announcement_new') }}">Nuevo comunicado</a>
+    </div>
+  {% endif %}
+{% endblock %}

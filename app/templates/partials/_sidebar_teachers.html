@@ -1,0 +1,35 @@
+{# Menú lateral del panel docente #}
+<p class="sidebar__title">Panel docente</p>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'teachers.dashboard' }}"
+   href="{{ url_for('teachers.dashboard') }}">Inicio</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint in ('teachers.courses', 'teachers.course_detail', 'teachers.attendance', 'teachers.grades') }}"
+   href="{{ url_for('teachers.courses') }}">Mis cursos</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'teachers.assignment_new' }}"
+   href="{{ url_for('teachers.courses') }}">Tareas y evaluaciones</a>
+
+<p class="sidebar__title">Avisos</p>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'teachers.announcements' }}"
+   href="{{ url_for('teachers.announcements') }}">Mis avisos</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'teachers.announcement_new' }}"
+   href="{{ url_for('teachers.announcement_new') }}">Publicar aviso</a>
+
+<p class="sidebar__title">Comunicación</p>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'messages.inbox' }}"
+   href="{{ url_for('messages.inbox') }}">
+  Mensajes {% if unread_messages %}<span class="nav__badge">{{ unread_messages }}</span>{% endif %}
+</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'messages.notifications' }}"
+   href="{{ url_for('messages.notifications') }}">
+  Notificaciones {% if unread_notifications %}<span class="nav__badge">{{ unread_notifications }}</span>{% endif %}
+</a>
+<a class="sidebar__link" href="{{ url_for('main.calendario') }}">Calendario escolar</a>
+
+<p class="sidebar__title">Mi cuenta</p>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'auth.profile' }}"
+   href="{{ url_for('auth.profile') }}">Mi perfil</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'auth.change_password' }}"
+   href="{{ url_for('auth.change_password') }}">Cambiar contraseña</a>
+<form method="post" action="{{ url_for('auth.logout') }}" style="padding: 0.35rem 0.6rem;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn--ghost btn--sm btn--block" type="submit">Cerrar sesión</button>
+</form>

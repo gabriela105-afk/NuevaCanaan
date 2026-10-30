@@ -1,0 +1,99 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Calificaciones · {{ course.label }}{% endblock %}
+{% from "partials/_macros.html" import csrf_field, input %}
+
+{% block sidebar %}{% include "partials/_sidebar_teachers.html" %}{% endblock %}
+
+{% block panel %}
+  <ul class="breadcrumb">
+    <li><a href="{{ url_for('teachers.courses') }}">Mis cursos</a></li>
+    <li><a href="{{ url_for('teachers.course_detail', course_id=course.id) }}">{{ course.label }}</a></li>
+    <li>Calificaciones</li>
+  </ul>
+
+  <div class="page-head">
+    <div>
+      <h1>Calificaciones</h1>
+      <p>{{ course.label }}</p>
+    </div>
+  </div>
+
+  {% if students %}
+    <form class="card" method="post" action="{{ url_for('teachers.grades', course_id=course.id) }}" novalidate>
+      {{ csrf_field() }}
+      <h2 class="card__title">Registrar o actualizar una nota</h2>
+      <div class="form-grid">
+        <div class="field">
+          <label for="student_id">Estudiante</label>
+          <select id="student_id" name="student_id" required>
+            {% for student in students %}
+              <option value="{{ student.id }}">{{ student.full_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="assignment_id">Evaluación o actividad</label>
+          <select id="assignment_id" name="assignment_id">
+            <option value="">Registro de periodo (sin actividad)</option>
+            {% for item in assignments %}
+              <option value="{{ item.id }}">{{ item.title }} ({{ item.kind_label }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        {{ input('period', 'Periodo / trimestre', '1', required=True, maxlength=20) }}
+        {{ input('score', 'Nota obtenida', '', type='number', step='0.01', required=True) }}
+        {{ input('max_score', 'Puntaje máximo', '100', type='number', step='0.01',
+                 hint='Por defecto 100.') }}
+        {{ input('observations', 'Observación (opcional)', '', maxlength=200) }}
+      </div>
+      <div class="form-actions">
+        <button class="btn btn--primary" type="submit">Guardar calificación</button>
+      </div>
+      <p class="small muted mb-0">
+        Si ya existe una nota para el mismo estudiante, evaluación y periodo, se actualizará.
+      </p>
+    </form>
+  {% else %}
+    <div class="card empty-state">
+      <p class="mb-0">No hay estudiantes inscritos en este curso.</p>
+    </div>
+  {% endif %}
+
+  <section class="mt-2">
+    <h2>Calificaciones registradas</h2>
+    {% if records %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th scope="col">Estudiante</th>
+              <th scope="col">Actividad</th>
+              <th scope="col">Periodo</th>
+              <th scope="col">Nota</th>
+              <th scope="col">Porcentaje</th>
+              <th scope="col">Observación</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for grade in records %}
+              <tr>
+                <td>{{ grade.student.full_name if grade.student else '—' }}</td>
+                <td>{{ grade.assignment.title if grade.assignment else 'Registro de periodo' }}</td>
+                <td>{{ grade.period }}</td>
+                <td>{{ grade.score }} / {{ grade.max_score }}</td>
+                <td>
+                  <span class="badge {{ 'badge--success' if grade.percentage >= 51 else 'badge--danger' }}">
+                    {{ grade.percentage }}%
+                  </span>
+                </td>
+                <td>{{ grade.observations or '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="card empty-state"><p class="mb-0">Aún no se registraron calificaciones.</p></div>
+    {% endif %}
+  </section>
+{% endblock %}

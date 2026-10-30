@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{#
+  Plantilla base para los paneles privados (admin, docentes y familias).
+  Los bloques `sidebar` y `panel` deben implementarse en cada panel.
+#}
+{% block content %}
+  <div class="container">
+    <div class="dashboard">
+      <aside class="sidebar" aria-label="Menú del panel">
+        {% block sidebar %}{% endblock %}
+      </aside>
+      <div class="dashboard__main">
+        {% block panel %}{% endblock %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

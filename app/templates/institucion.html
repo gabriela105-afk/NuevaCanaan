@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}La institución{% endblock %}
+{% from "partials/_macros.html" import page_head %}
+
+{% block content %}
+  <section class="section">
+    <div class="container">
+      {{ page_head('Nuestra institución', 'Información institucional del ' ~ institution.nombre_colegio) }}
+
+      <div class="grid grid--2">
+        <div class="stack">
+          <div class="card">
+            <h2 class="card__title">Presentación</h2>
+            {% if institution.presentacion %}
+              <p>{{ institution.presentacion|nl2br }}</p>
+            {% else %}
+              <p class="muted">
+                La presentación institucional está pendiente de publicación. La dirección
+                del establecimiento puede completarla desde el panel administrativo
+                (Configuración → Presentación del establecimiento).
+              </p>
+            {% endif %}
+          </div>
+
+          <div class="card">
+            <h2 class="card__title">Misión</h2>
+            {% if institution.mision %}
+              <p>{{ institution.mision|nl2br }}</p>
+            {% else %}
+              <p class="muted">Texto pendiente de aprobación por la dirección institucional.</p>
+            {% endif %}
+            <h2 class="card__title mt-2">Visión</h2>
+            {% if institution.vision %}
+              <p>{{ institution.vision|nl2br }}</p>
+            {% else %}
+              <p class="muted">Texto pendiente de aprobación por la dirección institucional.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card card--accent">
+            <h2 class="card__title">Datos institucionales</h2>
+            <ul class="stack small">
+              <li><strong>Nombre oficial:</strong> {{ institution.nombre_colegio }}</li>
+              <li><strong>Lema:</strong> {{ institution.lema or 'Por definir' }}</li>
+              <li><strong>Dirección:</strong> {{ institution.direccion or 'Por definir' }}</li>
+              <li><strong>Teléfono:</strong> {{ institution.telefono or 'Por definir' }}</li>
+              <li><strong>Correo:</strong> {{ institution.correo or 'Por definir' }}</li>
+              <li><strong>Horario de atención:</strong> {{ institution.horario_atencion or 'Por definir' }}</li>
+              <li><strong>Autoridad máxima:</strong> {{ institution.director or 'Por definir' }}</li>
+            </ul>
+            <p class="small muted mb-0">
+              Esta información es administrada por la dirección del colegio. Los campos
+              marcados como "Por definir" serán publicados cuando se confirmen oficialmente.
+            </p>
+          </div>
+
+          <div class="card">
+            <h2 class="card__title">Reseña histórica</h2>
+            {% if institution.historia %}
+              <p>{{ institution.historia|nl2br }}</p>
+            {% else %}
+              <p class="muted">La reseña histórica está pendiente de publicación.</p>
+            {% endif %}
+          </div>
+
+          <div class="card">
+            <h2 class="card__title">Valores institucionales</h2>
+            {% if institution.valores %}
+              <p>{{ institution.valores|nl2br }}</p>
+            {% else %}
+              <p class="muted">Los valores institucionales están pendientes de publicación.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt">
+    <div class="container">
+      <div class="section__head">
+        <div>
+          <h2>Nuestras instalaciones</h2>
+          <p>Imágenes institucionales autorizadas para difusión.</p>
+        </div>
+        <a class="btn btn--ghost btn--sm" href="{{ url_for('main.galeria') }}">Ver galería completa</a>
+      </div>
+      {% if gallery %}
+        <div class="gallery-grid">
+          {% for image in gallery %}
+            <figure class="gallery-item">
+              <img src="{{ url_for('static', filename=image.filename) }}" alt="{{ image.name }}" loading="lazy">
+              <figcaption>{{ image.name }}</figcaption>
+            </figure>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="gallery-empty">
+          <p class="mb-0">Las fotografías institucionales se encuentran pendientes de carga.</p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

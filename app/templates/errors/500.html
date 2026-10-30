@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Error interno{% endblock %}
+{% block content %}
+  <section class="section">
+    <div class="container" style="max-width: 640px;">
+      <div class="card text-center">
+        <h1>Ocurrió un error inesperado</h1>
+        <p class="muted">
+          El equipo técnico registró el incidente. Intente nuevamente en unos minutos;
+          si el problema continúa, comuníquese con la institución.
+        </p>
+        <div class="form-actions" style="justify-content: center;">
+          <a class="btn btn--primary" href="{{ url_for('main.index') }}">Volver al inicio</a>
+          <a class="btn btn--ghost" href="{{ url_for('main.contacto') }}">Reportar el problema</a>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

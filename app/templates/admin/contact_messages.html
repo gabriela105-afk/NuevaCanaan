@@ -1,0 +1,73 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Mensajes de contacto{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Formulario de contacto</h1>
+      <p>Consultas recibidas desde el sitio público ({{ unread_count }} sin leer).</p>
+    </div>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.contact_messages', pendientes='1' if not only_unread else None) }}">
+      {{ 'Ver todos' if only_unread else 'Ver sólo pendientes' }}
+    </a>
+  </div>
+
+  {% if messages %}
+    <div class="table-wrap">
+      <table class="data">
+        <caption>{{ pagination.total }} mensaje(s)</caption>
+        <thead>
+          <tr>
+            <th scope="col">Remitente</th>
+            <th scope="col">Asunto</th>
+            <th scope="col">Recibido</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for message in messages %}
+            <tr>
+              <td>
+                {{ message.name }}
+                {% if message.email %}<br><span class="small muted">{{ message.email }}</span>{% endif %}
+              </td>
+              <td>{{ message.subject|truncate(50) }}<br><span class="small muted">{{ message.excerpt|truncate(60) }}</span></td>
+              <td>{{ message.created_at|datetime }}</td>
+              <td>
+                <span class="badge {{ 'badge--muted' if message.is_read else 'badge--warning' }}">
+                  {{ 'Leído' if message.is_read else 'Sin leer' }}
+                </span>
+              </td>
+              <td>
+                <div class="actions">
+                  <a class="btn btn--ghost btn--sm"
+                     href="{{ url_for('admin.contact_message_detail', message_id=message.id) }}">Abrir</a>
+                  {% if current_user.role == 'admin' %}
+                    <form method="post"
+                          action="{{ url_for('admin.contact_message_delete', message_id=message.id) }}"
+                          data-confirm="¿Eliminar el mensaje «{{ message.subject }}»?">
+                      {{ csrf_field() }}
+                      <button class="btn btn--danger btn--sm" type="submit">Eliminar</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% set endpoint = 'admin.contact_messages' %}
+    {% set extra = {'pendientes': '1'} if only_unread else {} %}
+    {% include "partials/_pagination.html" with context %}
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin mensajes</h3>
+      <p class="mb-0">No se han recibido consultas desde el formulario público.</p>
+    </div>
+  {% endif %}
+{% endblock %}

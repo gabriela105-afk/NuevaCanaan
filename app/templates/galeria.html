@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Galería institucional{% endblock %}
+{% from "partials/_macros.html" import page_head %}
+
+{% block content %}
+  <section class="section">
+    <div class="container">
+      {{ page_head('Galería institucional', 'Fotografías del colegio autorizadas para difusión pública.') }}
+
+      {% if gallery %}
+        <div class="gallery-grid">
+          {% for image in gallery %}
+            <figure class="gallery-item">
+              <img src="{{ url_for('static', filename=image.filename) }}" alt="{{ image.name }}" loading="lazy">
+              <figcaption>{{ image.name }}</figcaption>
+            </figure>
+          {% endfor %}
+        </div>
+        <p class="small muted mt-2">
+          Las imágenes publicadas cuentan con autorización institucional. No se publican
+          fotografías que permitan identificar a estudiantes sin el consentimiento
+          correspondiente.
+        </p>
+      {% else %}
+        <div class="gallery-empty">
+          <h3>Aún no hay imágenes cargadas</h3>
+          <p class="mb-0">
+            La dirección del colegio puede subir fotografías institucionales desde el panel
+            administrativo, sección <strong>Galería</strong>.
+          </p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

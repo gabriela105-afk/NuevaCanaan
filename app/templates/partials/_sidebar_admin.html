@@ -1,0 +1,57 @@
+{# Menú lateral del panel administrativo / dirección #}
+<p class="sidebar__title">Principal</p>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'admin.dashboard' }}"
+   href="{{ url_for('admin.dashboard') }}">Panel general</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint in ('admin.announcements', 'admin.announcement_new', 'admin.announcement_edit') }}"
+   href="{{ url_for('admin.announcements') }}">Comunicados</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint in ('admin.events', 'admin.event_new', 'admin.event_edit') }}"
+   href="{{ url_for('admin.events') }}">Calendario escolar</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'admin.notifications' }}"
+   href="{{ url_for('admin.notifications') }}">Enviar notificación</a>
+
+{% if current_user.role == 'admin' %}
+  <p class="sidebar__title">Gestión académica</p>
+  <a class="sidebar__link {{ 'is-active' if request.endpoint in ('admin.courses', 'admin.course_new', 'admin.course_edit') }}"
+     href="{{ url_for('admin.courses') }}">Cursos</a>
+  <a class="sidebar__link {{ 'is-active' if request.endpoint in ('admin.students', 'admin.student_new', 'admin.student_edit') }}"
+     href="{{ url_for('admin.students') }}">Estudiantes</a>
+  <a class="sidebar__link {{ 'is-active' if request.endpoint in ('admin.parents', 'admin.parent_new', 'admin.parent_edit') }}"
+     href="{{ url_for('admin.parents') }}">Familias</a>
+  <a class="sidebar__link {{ 'is-active' if request.endpoint in ('admin.teachers', 'admin.teacher_new', 'admin.teacher_edit') }}"
+     href="{{ url_for('admin.teachers') }}">Docentes</a>
+{% endif %}
+
+<p class="sidebar__title">Bandejas</p>
+<a class="sidebar__link {{ 'is-active' if request.endpoint in ('admin.contact_messages', 'admin.contact_message_detail') }}"
+   href="{{ url_for('admin.contact_messages') }}">Formulario de contacto</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'messages.inbox' }}"
+   href="{{ url_for('messages.inbox') }}">
+  Mensajes internos {% if unread_messages %}<span class="nav__badge">{{ unread_messages }}</span>{% endif %}
+</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'messages.notifications' }}"
+   href="{{ url_for('messages.notifications') }}">
+  Notificaciones {% if unread_notifications %}<span class="nav__badge">{{ unread_notifications }}</span>{% endif %}
+</a>
+
+{% if current_user.role == 'admin' %}
+  <p class="sidebar__title">Administración del sistema</p>
+  <a class="sidebar__link {{ 'is-active' if request.endpoint in ('admin.users', 'admin.user_new', 'admin.user_edit') }}"
+     href="{{ url_for('admin.users') }}">Usuarios y roles</a>
+{% endif %}
+<p class="sidebar__title">Contenido institucional</p>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'admin.gallery' }}"
+   href="{{ url_for('admin.gallery') }}">Galería</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'admin.settings' }}"
+   href="{{ url_for('admin.settings') }}">Configuración</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'admin.audit' }}"
+   href="{{ url_for('admin.audit') }}">Auditoría</a>
+
+<p class="sidebar__title">Mi cuenta</p>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'auth.profile' }}"
+   href="{{ url_for('auth.profile') }}">Mi perfil</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'auth.change_password' }}"
+   href="{{ url_for('auth.change_password') }}">Cambiar contraseña</a>
+<form method="post" action="{{ url_for('auth.logout') }}" style="padding: 0.35rem 0.6rem;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn--ghost btn--sm btn--block" type="submit">Cerrar sesión</button>
+</form>

@@ -1,0 +1,78 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Estudiantes{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Estudiantes</h1>
+      <p>Registro de estudiantes. Esta información es privada y no se publica en el sitio web.</p>
+    </div>
+    <a class="btn btn--primary btn--sm" href="{{ url_for('admin.student_new') }}">Registrar estudiante</a>
+  </div>
+
+  <form class="filters" method="get" action="{{ url_for('admin.students') }}">
+    <div class="field">
+      <label for="q">Buscar por nombre o código</label>
+      <input type="search" id="q" name="q" value="{{ search }}" placeholder="Ej.: Demo o DEMO-001">
+    </div>
+    <button class="btn btn--primary btn--sm" type="submit">Buscar</button>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.students') }}">Limpiar</a>
+  </form>
+
+  {% if students %}
+    <div class="table-wrap">
+      <table class="data">
+        <caption>{{ pagination.total }} estudiante(s) registrados</caption>
+        <thead>
+          <tr>
+            <th scope="col">Estudiante</th>
+            <th scope="col">Código</th>
+            <th scope="col">Curso actual</th>
+            <th scope="col">Tutores</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for student in students %}
+            <tr>
+              <td>{{ student.full_name }}</td>
+              <td>{{ student.code }}</td>
+              <td>{{ student.current_course.label if student.current_course else 'Sin inscripción' }}</td>
+              <td>{{ student.parent_links|length }}</td>
+              <td>
+                <span class="badge {{ 'badge--success' if student.is_active else 'badge--muted' }}">
+                  {{ 'Activo' if student.is_active else 'Inactivo' }}
+                </span>
+              </td>
+              <td>
+                <div class="actions">
+                  <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.student_edit', student_id=student.id) }}">Editar</a>
+                  <form method="post" action="{{ url_for('admin.student_toggle', student_id=student.id) }}"
+                        data-confirm="¿{{ 'Desactivar' if student.is_active else 'Activar' }} al estudiante {{ student.full_name }}?">
+                    {{ csrf_field() }}
+                    <button class="btn btn--sm {{ 'btn--danger' if student.is_active else 'btn--ghost' }}" type="submit">
+                      {{ 'Desactivar' if student.is_active else 'Activar' }}
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% set endpoint = 'admin.students' %}
+    {% set extra = {'q': search} %}
+    {% include "partials/_pagination.html" with context %}
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin estudiantes registrados</h3>
+      <p class="mb-0">Registre al primer estudiante para comenzar a gestionar cursos y familias.</p>
+      <a class="btn btn--primary btn--sm" href="{{ url_for('admin.student_new') }}">Registrar estudiante</a>
+    </div>
+  {% endif %}
+{% endblock %}

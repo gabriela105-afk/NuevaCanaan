@@ -1,0 +1,122 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Panel administrativo{% endblock %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Panel general</h1>
+      <p>{{ current_user.full_name }} · {{ current_user.role_label }}</p>
+    </div>
+    <a class="btn btn--primary btn--sm" href="{{ url_for('admin.announcement_new') }}">Nuevo comunicado</a>
+  </div>
+
+  {% if pending %}
+    <div class="alert alert--warning">
+      <span class="alert__icon" aria-hidden="true">⚠</span>
+      <span>
+        Datos institucionales pendientes de completar:
+        <strong>{{ pending|join(', ') }}</strong>.
+        <a href="{{ url_for('admin.settings') }}">Completar ahora</a>.
+      </span>
+    </div>
+  {% endif %}
+
+  <div class="grid grid--4">
+    <div class="stat"><div class="stat__value">{{ stats.students }}</div><div class="stat__label">Estudiantes activos</div></div>
+    <div class="stat"><div class="stat__value">{{ stats.courses }}</div><div class="stat__label">Cursos activos</div></div>
+    <div class="stat"><div class="stat__value">{{ stats.parents }}</div><div class="stat__label">Familias registradas</div></div>
+    <div class="stat"><div class="stat__value">{{ stats.teachers }}</div><div class="stat__label">Docentes activos</div></div>
+    <div class="stat"><div class="stat__value">{{ stats.announcements }}</div><div class="stat__label">Comunicados publicados</div></div>
+    <div class="stat"><div class="stat__value">{{ stats.drafts }}</div><div class="stat__label">Borradores</div></div>
+    <div class="stat"><div class="stat__value">{{ stats.upcoming_events }}</div><div class="stat__label">Eventos próximos</div></div>
+    <div class="stat"><div class="stat__value">{{ stats.unread_contact }}</div><div class="stat__label">Consultas sin leer</div></div>
+  </div>
+
+  <div class="grid grid--2 mt-2">
+    <section>
+      <div class="section__head">
+        <h2>Comunicados recientes</h2>
+        <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.announcements') }}">Gestionar</a>
+      </div>
+      {% if recent_announcements %}
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr><th scope="col">Título</th><th scope="col">Estado</th><th scope="col">Creado</th></tr>
+            </thead>
+            <tbody>
+              {% for announcement in recent_announcements %}
+                <tr>
+                  <td><a href="{{ url_for('admin.announcement_edit', announcement_id=announcement.id) }}">{{ announcement.title|truncate(48) }}</a></td>
+                  <td>
+                    <span class="badge {{ 'badge--success' if announcement.status == 'published' else ('badge--warning' if announcement.status == 'draft' else 'badge--muted') }}">
+                      {{ announcement.status_label }}
+                    </span>
+                  </td>
+                  <td>{{ announcement.created_at|date }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="card empty-state"><p class="mb-0">Sin comunicados registrados.</p></div>
+      {% endif %}
+    </section>
+
+    <section>
+      <div class="section__head">
+        <h2>Próximos eventos</h2>
+        <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.events') }}">Calendario</a>
+      </div>
+      {% if upcoming_events %}
+        <ul class="timeline">
+          {% for event in upcoming_events %}
+            <li>
+              <span class="timeline__date">
+                <span class="timeline__day">{{ event.start_date.day }}</span>
+                <span class="timeline__month">{{ event.start_date|date('%b') }}</span>
+              </span>
+              <div class="timeline__body">
+                <h4>{{ event.title }}</h4>
+                <p>{{ event.category_label }} · {{ event.audience_label }}</p>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="card empty-state"><p class="mb-0">Sin eventos programados.</p></div>
+      {% endif %}
+    </section>
+  </div>
+
+  <section class="mt-2">
+    <div class="section__head">
+      <h2>Actividad administrativa reciente</h2>
+      <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.audit') }}">Ver auditoría</a>
+    </div>
+    {% if audit_logs %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th scope="col">Fecha</th><th scope="col">Usuario</th><th scope="col">Acción</th><th scope="col">Detalle</th></tr>
+          </thead>
+          <tbody>
+            {% for log in audit_logs %}
+              <tr>
+                <td>{{ log.created_at|datetime }}</td>
+                <td>{{ log.actor_name or 'Sistema' }}</td>
+                <td><span class="badge">{{ log.action }}</span></td>
+                <td>{{ log.details or '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="card empty-state"><p class="mb-0">Sin registros de auditoría.</p></div>
+    {% endif %}
+  </section>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}{{ student.full_name }}{% endblock %}
+
+{% block sidebar %}{% include "partials/_sidebar_parents.html" %}{% endblock %}
+
+{% block panel %}
+  <ul class="breadcrumb">
+    <li><a href="{{ url_for('parents.dashboard') }}">Portal</a></li>
+    <li><a href="{{ url_for('parents.children') }}">Mis hijos</a></li>
+    <li>{{ student.full_name }}</li>
+  </ul>
+
+  <div class="page-head">
+    <div>
+      <h1>{{ student.full_name }}</h1>
+      <p>
+        Código {{ student.code }}
+        {% if course %} · {{ course.label }}{% endif %}
+      </p>
+    </div>
+    <span class="badge {{ 'badge--success' if student.is_active else 'badge--muted' }}">
+      {{ 'Activo' if student.is_active else 'Inactivo' }}
+    </span>
+  </div>
+
+  <div class="grid grid--3">
+    <div class="stat">
+      <div class="stat__value">{{ attendance_rate if attendance_rate is not none else '—' }}{% if attendance_rate is not none %}%{% endif %}</div>
+      <div class="stat__label">Asistencia (últimos registros)</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value">{{ grades|length }}</div>
+      <div class="stat__label">Calificaciones registradas</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value">{{ assignments|length }}</div>
+      <div class="stat__label">Tareas y evaluaciones del curso</div>
+    </div>
+  </div>
+
+  <section class="mt-2">
+    <h2>Calificaciones</h2>
+    {% if grades %}
+      <div class="table-wrap">
+        <table class="data">
+          <caption>Calificaciones registradas por los docentes</caption>
+          <thead>
+            <tr>
+              <th scope="col">Evaluación / actividad</th>
+              <th scope="col">Materia</th>
+              <th scope="col">Periodo</th>
+              <th scope="col">Nota</th>
+              <th scope="col">Porcentaje</th>
+              <th scope="col">Registrada</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for grade in grades %}
+              <tr>
+                <td>{{ grade.assignment.title if grade.assignment else 'Registro de periodo' }}</td>
+                <td>{{ grade.assignment.subject if grade.assignment and grade.assignment.subject else '—' }}</td>
+                <td>{{ grade.period }}</td>
+                <td>{{ grade.score }} / {{ grade.max_score }}</td>
+                <td><span class="badge {{ 'badge--success' if grade.percentage >= 51 else 'badge--danger' }}">{{ grade.percentage }}%</span></td>
+                <td>{{ grade.created_at|date }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="card empty-state">
+        <p class="mb-0">Aún no hay calificaciones registradas para este estudiante.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="mt-2">
+    <h2>Tareas y evaluaciones del curso</h2>
+    {% if assignments %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th scope="col">Título</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Materia</th>
+              <th scope="col">Entrega</th>
+              <th scope="col">Puntaje</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in assignments %}
+              <tr>
+                <td>{{ item.title }}</td>
+                <td><span class="badge">{{ item.kind_label }}</span></td>
+                <td>{{ item.subject or '—' }}</td>
+                <td>{{ item.due_date|date if item.due_date else 'Sin fecha' }}</td>
+                <td>{{ item.max_score if item.max_score else '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="card empty-state">
+        <p class="mb-0">Los docentes aún no registraron tareas para este curso.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="mt-2">
+    <h2>Asistencia</h2>
+    {% if attendance %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th scope="col">Fecha</th><th scope="col">Estado</th><th scope="col">Observación</th></tr>
+          </thead>
+          <tbody>
+            {% for record in attendance %}
+              <tr>
+                <td>{{ record.date|date }}</td>
+                <td>
+                  <span class="badge {{ 'badge--success' if record.status in ('presente','justificado') else ('badge--warning' if record.status == 'tarde' else 'badge--danger') }}">
+                    {{ record.status_label }}
+                  </span>
+                </td>
+                <td>{{ record.notes or '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="card empty-state">
+        <p class="mb-0">No existen registros de asistencia para este estudiante.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  {% if subjects %}
+    <section class="mt-2">
+      <h2>Materias del curso</h2>
+      <p class="small muted">{{ subjects|join(' · ') }}</p>
+    </section>
+  {% endif %}
+
+  <p class="mt-2">
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('parents.children') }}">‹ Volver a mis hijos</a>
+  </p>
+{% endblock %}

@@ -1,0 +1,82 @@
+# --- Python ---------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+env/
+ENV/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# --- Node (por si se añaden herramientas front-end) -----------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Flask / datos locales ------------------------------------------
+# Se ignora el contenido de instance/ (base SQLite, subidas) pero la
+# carpeta se conserva en el repositorio mediante .gitkeep.
+instance/*
+!instance/.gitkeep
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+uploads/
+
+# --- Credenciales y certificados ------------------------------------
+*.pem
+*.key
+*.pfx
+*.p12
+secrets.json
+
+# --- Pruebas y cobertura --------------------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# --- Editores / sistema ---------------------------------------------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Registros -------------------------------------------------------
+*.log
+logs/
+
+# --- Archivos temporales / volcados de diagnóstico -------------------
+*.tmp
+*.bak
+*.orig
+_*_out.txt
+_urls.txt
+_dbcheck.txt
+
+# --- Scripts locales de diagnóstico (contienen credenciales locales) --
+# Permanecen en el equipo, pero no se publican en GitHub.
+/_check_db.py
+/_live_check.py
+/_serve.py
+/_urls.py

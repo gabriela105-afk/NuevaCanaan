@@ -1,0 +1,52 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}{{ 'Editar actividad' if assignment else 'Nueva tarea o evaluación' }}{% endblock %}
+{% from "partials/_macros.html" import csrf_field, input, select, textarea %}
+
+{% block sidebar %}{% include "partials/_sidebar_teachers.html" %}{% endblock %}
+
+{% block panel %}
+  <ul class="breadcrumb">
+    <li><a href="{{ url_for('teachers.courses') }}">Mis cursos</a></li>
+    <li><a href="{{ url_for('teachers.course_detail', course_id=course.id) }}">{{ course.label }}</a></li>
+    <li>{{ 'Editar actividad' if assignment else 'Nueva actividad' }}</li>
+  </ul>
+
+  <div class="page-head">
+    <div>
+      <h1>{{ 'Editar actividad' if assignment else 'Nueva tarea o evaluación' }}</h1>
+      <p>{{ course.label }}</p>
+    </div>
+  </div>
+
+  <form class="card" method="post" novalidate>
+    {{ csrf_field() }}
+    <div class="form-grid">
+      {{ input('title', 'Título de la actividad', form.title, required=True, maxlength=180) }}
+      {{ select('kind', 'Tipo', [
+          ('tarea', 'Tarea'),
+          ('evaluacion', 'Evaluación'),
+          ('actividad', 'Actividad')
+        ], form.kind, required=True) }}
+      {{ input('subject', 'Materia', form.subject, maxlength=80,
+               hint='Opcional. Ej.: Matemática.') }}
+      {{ input('due_date', 'Fecha de entrega', form.due_date, type='date') }}
+      {{ input('max_score', 'Puntaje máximo', form.max_score, type='number', step='0.01',
+               hint='Opcional. Se utiliza para registrar calificaciones.') }}
+      {{ textarea('description', 'Descripción o instrucciones', form.description,
+                  rows=6, maxlength=2000, counter='desc-counter') }}
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">
+        {{ 'Guardar cambios' if assignment else 'Registrar actividad' }}
+      </button>
+      <a class="btn btn--ghost"
+         href="{{ url_for('teachers.course_detail', course_id=course.id) }}">Cancelar</a>
+    </div>
+  </form>
+
+  <div class="notice mt-2">
+    La información registrada será visible para las familias de los estudiantes del curso
+    en el portal de padres.
+  </div>
+{% endblock %}

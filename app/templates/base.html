@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f3d5c">
+  <meta name="description" content="{% block description %}Plataforma web institucional del {{ institution.nombre_colegio }}: comunicados oficiales, calendario escolar y portal para familias.{% endblock %}">
+  <title>{% block title %}Inicio{% endblock %} · {{ institution.nombre_colegio }}</title>
+  <link rel="icon" href="{{ url_for('static', filename=config.INSTITUTION_FAVICON) }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Saltar al contenido principal</a>
+
+  <header class="site-header">
+    <div class="topbar">
+      <div class="container">
+        <span>
+          {% if institution.telefono %}Tel. {{ institution.telefono }}{% else %}Teléfono institucional por definir{% endif %}
+          {% if institution.correo %} · <a href="mailto:{{ institution.correo }}">{{ institution.correo }}</a>{% endif %}
+        </span>
+        <span>
+          {% if institution.horario_atencion %}Atención: {{ institution.horario_atencion }}{% else %}Horario de atención por definir{% endif %}
+        </span>
+      </div>
+    </div>
+
+    <div class="container header-main">
+      <a class="brand" href="{{ url_for('main.index') }}">
+        <img class="brand__logo" src="{{ url_for('static', filename=config.INSTITUTION_LOGO) }}"
+             alt="Logotipo de {{ institution.nombre_colegio }}">
+        <span class="brand__text">
+          <span class="brand__name">{{ institution.nombre_colegio }}</span>
+          <span class="brand__tag">
+            {% if institution.lema %}{{ institution.lema }}{% else %}Plataforma institucional{% endif %}
+          </span>
+        </span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="main-nav"
+              aria-label="Abrir o cerrar el menú de navegación">
+        <span></span><span></span><span></span>
+      </button>
+
+      <nav class="nav" id="main-nav" aria-label="Navegación principal">
+        <a class="nav__link {{ 'is-active' if request.endpoint == 'main.index' }}"
+           href="{{ url_for('main.index') }}">Inicio</a>
+        <a class="nav__link {{ 'is-active' if request.endpoint == 'main.institucion' }}"
+           href="{{ url_for('main.institucion') }}">Institución</a>
+        <a class="nav__link {{ 'is-active' if request.endpoint == 'announcements.index' }}"
+           href="{{ url_for('announcements.index') }}">Comunicados</a>
+        <a class="nav__link {{ 'is-active' if request.endpoint == 'main.calendario' }}"
+           href="{{ url_for('main.calendario') }}">Calendario</a>
+        <a class="nav__link {{ 'is-active' if request.endpoint == 'main.galeria' }}"
+           href="{{ url_for('main.galeria') }}">Galería</a>
+        <a class="nav__link {{ 'is-active' if request.endpoint == 'main.contacto' }}"
+           href="{{ url_for('main.contacto') }}">Contacto</a>
+
+        {% if current_user.is_authenticated %}
+          <a class="nav__link" href="{{ url_for(current_user.dashboard_endpoint) }}">
+            Mi panel
+            <span class="badge badge--muted">{{ current_user.role_label }}</span>
+          </a>
+          <a class="nav__link" href="{{ url_for('messages.notifications') }}">
+            Notificaciones
+            {% if unread_notifications %}<span class="nav__badge">{{ unread_notifications }}</span>{% endif %}
+          </a>
+          <a class="nav__link" href="{{ url_for('messages.inbox') }}">
+            Mensajes
+            {% if unread_messages %}<span class="nav__badge">{{ unread_messages }}</span>{% endif %}
+          </a>
+          <form method="post" action="{{ url_for('auth.logout') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn--ghost btn--sm" type="submit">Cerrar sesión</button>
+          </form>
+        {% else %}
+          <a class="btn btn--primary btn--sm" href="{{ url_for('auth.login') }}">Iniciar sesión</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main id="contenido" class="page">
+    <div class="container">{% include "partials/_flash.html" %}</div>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__main">
+      <div>
+        <h4>{{ institution.nombre_colegio }}</h4>
+        <p>{% if institution.presentacion %}{{ institution.presentacion|truncate(180) }}{% else %}Plataforma institucional de comunicación entre el establecimiento y las familias.{% endif %}</p>
+        <p class="footer-badge">Compromiso con la educación y la transparencia.</p>
+      </div>
+      <div>
+        <h4>Contacto institucional</h4>
+        <ul>
+          <li>Dirección: {{ institution.direccion or 'Información pendiente de actualización' }}</li>
+          <li>Teléfono: {{ institution.telefono or 'Información pendiente de actualización' }}</li>
+          <li>Correo: {{ institution.correo or 'Información pendiente de actualización' }}</li>
+          <li>Horario: {{ institution.horario_atencion or 'Información pendiente de actualización' }}</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Enlaces útiles</h4>
+        <ul>
+          <li><a href="{{ url_for('announcements.index') }}">Comunicados oficiales</a></li>
+          <li><a href="{{ url_for('main.calendario') }}">Calendario escolar</a></li>
+          <li><a href="{{ url_for('main.contacto') }}">Formulario de contacto</a></li>
+          <li><a href="{{ url_for('auth.login') }}">Acceso a familias y docentes</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Privacidad</h4>
+        <p>{{ institution.nota_privacidad }}</p>
+      </div>
+    </div>
+    <div class="container site-footer__bottom">
+      <span>© {{ current_year }} {{ institution.nombre_colegio }}. Todos los derechos reservados.</span>
+      <span>Plataforma institucional desarrollada con Flask.</span>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
+

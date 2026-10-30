@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+  <section class="hero" style="background-image: url('{{ url_for('static', filename=config.INSTITUTION_COVER) }}');">
+    <div class="container">
+      <div class="hero__inner">
+        <span class="hero__badge">Comunicación institucional</span>
+        <h1>{{ institution.nombre_colegio }}</h1>
+        <p>{{ institution.mensaje_bienvenida }}</p>
+        <div class="hero__actions">
+          {% if current_user.is_authenticated %}
+            <a class="btn btn--primary" href="{{ url_for(current_user.dashboard_endpoint) }}">Ir a mi panel</a>
+          {% else %}
+            <a class="btn btn--primary" href="{{ url_for('auth.login') }}">Ingresar a la plataforma</a>
+          {% endif %}
+          <a class="btn btn--ghost" href="{{ url_for('announcements.index') }}">Ver comunicados</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="container">
+    <section class="quick-access" aria-label="Accesos rápidos">
+      <div class="grid grid--4">
+        <a class="card" href="{{ url_for('announcements.index') }}">
+          <h3>Comunicados oficiales</h3>
+          <p>Avisos, circulares y reuniones publicadas por la institución.</p>
+        </a>
+        <a class="card" href="{{ url_for('main.calendario') }}">
+          <h3>Calendario escolar</h3>
+          <p>Fechas de reuniones, evaluaciones y actividades institucionales.</p>
+        </a>
+        <a class="card" href="{{ url_for('auth.login') }}">
+          <h3>Portal de familias</h3>
+          <p>Consulte la información académica de sus hijos con su cuenta personal.</p>
+        </a>
+        <a class="card" href="{{ url_for('main.contacto') }}">
+          <h3>Contacto</h3>
+          <p>Envíe una consulta a la institución mediante el formulario oficial.</p>
+        </a>
+      </div>
+    </section>
+  </div>
+
+  <section class="section">
+    <div class="container grid grid--2">
+      <div>
+        <h2>Bienvenida institucional</h2>
+        <p>{{ institution.mensaje_bienvenida }}</p>
+        {% if institution.presentacion %}
+          <p>{{ institution.presentacion }}</p>
+        {% else %}
+          <p class="muted">
+            La presentación oficial del establecimiento se publicará cuando la dirección
+            apruebe el texto correspondiente.
+          </p>
+        {% endif %}
+        {% if institution.director %}
+          <p class="small muted">{{ institution.director }}</p>
+        {% endif %}
+        <a class="btn btn--ghost" href="{{ url_for('main.institucion') }}">Conocer la institución</a>
+      </div>
+      <div class="card">
+        <h3 class="card__title">Información de contacto</h3>
+        <ul class="stack small">
+          <li><strong>Dirección:</strong> {{ institution.direccion or 'Información pendiente de actualización' }}</li>
+          <li><strong>Teléfono:</strong> {{ institution.telefono or 'Información pendiente de actualización' }}</li>
+          <li><strong>Correo:</strong> {{ institution.correo or 'Información pendiente de actualización' }}</li>
+          <li><strong>Horario de atención:</strong> {{ institution.horario_atencion or 'Información pendiente de actualización' }}</li>
+        </ul>
+        <hr class="divider">
+        <p class="small muted mb-0">
+          Los datos de contacto se administran desde el panel institucional. Si algún dato
+          aparece como pendiente, solicite su actualización a la dirección del colegio.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt">
+    <div class="container">
+      <div class="section__head">
+        <div>
+          <h2>Últimos comunicados</h2>
+          <p>Avisos oficiales autorizados para difusión general.</p>
+        </div>
+        <a class="btn btn--ghost btn--sm" href="{{ url_for('announcements.index') }}">Ver todos</a>
+      </div>
+
+      {% if announcements %}
+        <div class="grid grid--2">
+          {% for announcement in announcements %}
+            <article class="card {{ 'card--pinned' if announcement.is_pinned }}">
+              <div class="card__meta">
+                {% if announcement.is_pinned %}<span class="badge badge--gold">Fijado</span>{% endif %}
+                <span class="badge badge--{{ announcement.priority }}">{{ announcement.priority_label }}</span>
+                <span class="badge">{{ announcement.category_label }}</span>
+                <span>{{ announcement.published_at|longdate }}</span>
+              </div>
+              <h3 class="card__title">
+                <a href="{{ url_for('announcements.detail', announcement_id=announcement.id) }}">{{ announcement.title }}</a>
+              </h3>
+              <p class="card__body">{{ announcement.summary or announcement.body|truncate(180) }}</p>
+              <div class="card__footer">
+                <span class="small muted">
+                  {{ announcement.author.full_name if announcement.author else 'Dirección' }}
+                </span>
+                <a class="btn btn--ghost btn--sm"
+                   href="{{ url_for('announcements.detail', announcement_id=announcement.id) }}">Leer comunicado</a>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="card empty-state">
+          <h3>Sin comunicados publicados</h3>
+          <p class="mb-0">Cuando la institución publique un comunicado aparecerá en esta sección.</p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container grid grid--2">
+      <div>
+        <div class="section__head">
+          <div>
+            <h2>Próximas actividades</h2>
+            <p>Reuniones, evaluaciones y actividades programadas.</p>
+          </div>
+        </div>
+        {% if events %}
+          <ul class="timeline">
+            {% for event in events %}
+              <li>
+                <span class="timeline__date">
+                  <span class="timeline__day">{{ event.start_date.day }}</span>
+                  <span class="timeline__month">{{ event.start_date|date('%b') }}</span>
+                </span>
+                <div class="timeline__body">
+                  <h4>{{ event.title }}</h4>
+                  <p>
+                    {{ event.category_label }}
+                    {% if event.time_label %} · {{ event.time_label }}{% endif %}
+                    {% if event.location %} · {{ event.location }}{% endif %}
+                  </p>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+          <a class="btn btn--ghost btn--sm" href="{{ url_for('main.calendario') }}">Ver calendario completo</a>
+        {% else %}
+          <div class="card empty-state">
+            <h3>Sin actividades programadas</h3>
+            <p class="mb-0">El calendario escolar se actualiza desde el panel de dirección.</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <div>
+        <div class="section__head">
+          <div>
+            <h2>Galería institucional</h2>
+            <p>Imágenes autorizadas para difusión.</p>
+          </div>
+        </div>
+        {% if gallery %}
+          <div class="gallery-grid">
+            {% for image in gallery %}
+              <figure class="gallery-item">
+                <img src="{{ url_for('static', filename=image.filename) }}" alt="{{ image.name }}" loading="lazy">
+                <figcaption>{{ image.name }}</figcaption>
+              </figure>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="gallery-empty">
+            <p><strong>Aún no hay fotografías institucionales cargadas.</strong></p>
+            <p class="mb-0 small">
+              La dirección puede subir imágenes desde el panel administrativo (sección Galería),
+              respetando la autorización de uso de imagen de los estudiantes.
+            </p>
+          </div>
+        {% endif %}
+        <a class="btn btn--ghost btn--sm mt-2" href="{{ url_for('main.galeria') }}">Ver galería</a>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Nuevo mensaje{% endblock %}
+{% from "partials/_macros.html" import csrf_field, page_head %}
+
+{% block content %}
+  <section class="section">
+    <div class="container" style="max-width: 760px;">
+      {{ page_head('Nuevo mensaje', 'Los mensajes internos son registrados y auditados por la institución.') }}
+
+      {% if recipients %}
+        <form class="card" method="post" action="{{ url_for('messages.compose') }}" novalidate>
+          {{ csrf_field() }}
+          <div class="form-grid">
+            <div class="field field--full">
+              <label for="recipient_id">Destinatario</label>
+              <select id="recipient_id" name="recipient_id" required>
+                <option value="">Seleccione un destinatario</option>
+                {% for recipient in recipients %}
+                  <option value="{{ recipient.id }}"
+                    {% if form.recipient_id|string == recipient.id|string %}selected{% endif %}>
+                    {{ recipient.full_name }} — {{ recipient.role_label }}
+                  </option>
+                {% endfor %}
+              </select>
+              {% if not current_user.is_staff %}
+                <span class="hint">Las familias pueden escribir a la dirección y administración.</span>
+              {% endif %}
+            </div>
+            <div class="field field--full">
+              <label for="subject">Asunto</label>
+              <input type="text" id="subject" name="subject" value="{{ form.subject }}"
+                     required maxlength="160">
+            </div>
+            <div class="field field--full">
+              <label for="body">Mensaje</label>
+              <textarea id="body" name="body" rows="7" required maxlength="4000"
+                        data-counter="body-counter">{{ form.body }}</textarea>
+              <span class="hint" id="body-counter"></span>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit">Enviar mensaje</button>
+            <a class="btn btn--ghost" href="{{ url_for('messages.inbox') }}">Cancelar</a>
+          </div>
+        </form>
+      {% else %}
+        <div class="card empty-state">
+          <h3>No hay destinatarios disponibles</h3>
+          <p class="mb-0">
+            La institución aún no ha registrado cuentas con las que pueda comunicarse.
+            Utilice el formulario de contacto público.
+          </p>
+          <a class="btn btn--primary btn--sm" href="{{ url_for('main.contacto') }}">Ir a contacto</a>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,31 @@
+{# Menú lateral del portal de familias #}
+<p class="sidebar__title">Portal de familias</p>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'parents.dashboard' }}"
+   href="{{ url_for('parents.dashboard') }}">Inicio</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint in ('parents.children', 'parents.child_detail') }}"
+   href="{{ url_for('parents.children') }}">Mis hijos</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'parents.announcements' }}"
+   href="{{ url_for('parents.announcements') }}">Comunicados</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'parents.calendar' }}"
+   href="{{ url_for('parents.calendar') }}">Calendario</a>
+
+<p class="sidebar__title">Comunicación</p>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'messages.inbox' }}"
+   href="{{ url_for('messages.inbox') }}">
+  Mensajes {% if unread_messages %}<span class="nav__badge">{{ unread_messages }}</span>{% endif %}
+</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'messages.notifications' }}"
+   href="{{ url_for('messages.notifications') }}">
+  Notificaciones {% if unread_notifications %}<span class="nav__badge">{{ unread_notifications }}</span>{% endif %}
+</a>
+<a class="sidebar__link" href="{{ url_for('main.contacto') }}">Contacto institucional</a>
+
+<p class="sidebar__title">Mi cuenta</p>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'auth.profile' }}"
+   href="{{ url_for('auth.profile') }}">Mi perfil</a>
+<a class="sidebar__link {{ 'is-active' if request.endpoint == 'auth.change_password' }}"
+   href="{{ url_for('auth.change_password') }}">Cambiar contraseña</a>
+<form method="post" action="{{ url_for('auth.logout') }}" style="padding: 0.35rem 0.6rem;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn--ghost btn--sm btn--block" type="submit">Cerrar sesión</button>
+</form>

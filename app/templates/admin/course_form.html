@@ -1,0 +1,88 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}{{ 'Editar curso' if course else 'Nuevo curso' }}{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <ul class="breadcrumb">
+    <li><a href="{{ url_for('admin.courses') }}">Cursos</a></li>
+    <li>{{ course.label if course else 'Nuevo curso' }}</li>
+  </ul>
+
+  <div class="page-head">
+    <div>
+      <h1>{{ 'Editar curso' if course else 'Crear curso' }}</h1>
+      <p>El nombre, paralelo y año académico deben ser únicos.</p>
+    </div>
+  </div>
+
+  <form class="card" method="post" novalidate>
+    {{ csrf_field() }}
+    <div class="form-grid">
+      <div class="field">
+        <label for="name">Nombre del curso <span aria-hidden="true">*</span></label>
+        <input type="text" id="name" name="name" value="{{ form.name }}" required maxlength="80"
+               placeholder="Ej.: 1ro de Secundaria">
+      </div>
+      <div class="field">
+        <label for="level">Nivel</label>
+        <input type="text" id="level" name="level" value="{{ form.level }}" maxlength="60"
+               placeholder="Ej.: Secundaria, Primaria, Técnico">
+      </div>
+      <div class="field">
+        <label for="parallel">Paralelo / sección <span aria-hidden="true">*</span></label>
+        <input type="text" id="parallel" name="parallel" value="{{ form.parallel }}" required maxlength="10">
+      </div>
+      <div class="field">
+        <label for="academic_year">Año académico <span aria-hidden="true">*</span></label>
+        <input type="number" id="academic_year" name="academic_year" value="{{ form.academic_year }}"
+               required min="2000" max="2100" step="1">
+      </div>
+      <div class="field field--full">
+        <label for="description">Descripción</label>
+        <input type="text" id="description" name="description" value="{{ form.description }}" maxlength="200">
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">
+        {{ 'Guardar cambios' if course else 'Crear curso' }}
+      </button>
+      <a class="btn btn--ghost" href="{{ url_for('admin.courses') }}">Cancelar</a>
+    </div>
+  </form>
+
+  {% if course %}
+    <div class="grid grid--2 mt-2">
+      <div class="card">
+        <h2 class="card__title">Estudiantes inscritos ({{ students|length }})</h2>
+        {% if students %}
+          <ul class="small stack">
+            {% for student in students %}
+              <li>{{ student.full_name }} <span class="muted">· {{ student.code }}</span></li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="small muted mb-0">No hay estudiantes inscritos en este curso.</p>
+        {% endif %}
+      </div>
+      <div class="card">
+        <h2 class="card__title">Docentes asignados</h2>
+        {% if teachers %}
+          <ul class="small stack">
+            {% for teacher in teachers %}
+              <li>{{ teacher.user.full_name if teacher.user else '—' }} <span class="muted">· {{ teacher.specialty or 'Sin especialidad' }}</span></li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="small muted mb-0">Ningún docente asignado a este curso.</p>
+        {% endif %}
+        <p class="small muted">
+          Las asignaciones se gestionan desde la ficha de cada docente
+          (<a href="{{ url_for('admin.teachers') }}">Docentes</a>).
+        </p>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}

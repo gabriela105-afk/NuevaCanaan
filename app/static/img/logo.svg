@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-labelledby="tituloLogo">
+  <title id="tituloLogo">Logotipo institucional pendiente de reemplazo</title>
+  <!--
+    ARCHIVO PROVISORIO.
+    Reemplace este archivo por el logotipo oficial del colegio
+    (mismo nombre: app/static/img/logo.svg o ajuste INSTITUTION_LOGO).
+  -->
+  <rect width="200" height="200" rx="20" fill="#0f3d5c"/>
+  <path d="M100 26 L166 54 V104 C166 141 137 168 100 178 C63 168 34 141 34 104 V54 Z"
+        fill="#ffffff" opacity="0.12"/>
+  <text x="100" y="106" font-family="Segoe UI, Arial, sans-serif" font-size="56"
+        font-weight="700" fill="#ffffff" text-anchor="middle">NC</text>
+  <text x="100" y="138" font-family="Segoe UI, Arial, sans-serif" font-size="11"
+        fill="#c9e0ef" text-anchor="middle" letter-spacing="1">LOGOTIPO PENDIENTE</text>
+</svg>

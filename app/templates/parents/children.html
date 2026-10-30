@@ -1,0 +1,55 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Mis hijos{% endblock %}
+
+{% block sidebar %}{% include "partials/_sidebar_parents.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Mis hijos</h1>
+      <p>Estudiantes vinculados a su cuenta de tutor. Usted sólo puede consultar esta información.</p>
+    </div>
+  </div>
+
+  {% if students %}
+    <div class="grid grid--2">
+      {% for student in students %}
+        <article class="card">
+          <div class="row" style="gap: 0.85rem; align-items: center;">
+            <span class="avatar">{{ student.full_name|initials }}</span>
+            <div>
+              <h2 class="card__title mb-0">{{ student.full_name }}</h2>
+              <p class="small muted mb-0">Código {{ student.code }}</p>
+            </div>
+          </div>
+          <hr class="divider">
+          <ul class="small stack">
+            <li><strong>Curso actual:</strong>
+              {{ student.current_course.label if student.current_course else 'Sin inscripción activa' }}
+            </li>
+            <li><strong>Estado:</strong> {{ 'Activo' if student.is_active else 'Inactivo' }}</li>
+            <li><strong>Edad:</strong> {{ student.age if student.age is not none else 'No registrada' }}</li>
+          </ul>
+          <div class="card__footer">
+            <a class="btn btn--primary btn--sm"
+               href="{{ url_for('parents.child_detail', student_id=student.id) }}">Ver ficha académica</a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin estudiantes vinculados</h3>
+      <p class="mb-0">
+        La administración del colegio debe vincular a sus hijos con su cuenta. Si cree que
+        se trata de un error, utilice el formulario de contacto.
+      </p>
+      <a class="btn btn--primary btn--sm" href="{{ url_for('main.contacto') }}">Contactar a la institución</a>
+    </div>
+  {% endif %}
+
+  <div class="notice mt-2">
+    <strong>Privacidad:</strong> esta plataforma no muestra información de estudiantes que
+    no estén vinculados a su cuenta.
+  </div>
+{% endblock %}

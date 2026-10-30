@@ -1,0 +1,95 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}{{ 'Editar evento' if event else 'Nuevo evento' }}{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <ul class="breadcrumb">
+    <li><a href="{{ url_for('admin.events') }}">Calendario</a></li>
+    <li>{{ event.title|truncate(40) if event else 'Nuevo evento' }}</li>
+  </ul>
+
+  <div class="page-head">
+    <div>
+      <h1>{{ 'Editar evento' if event else 'Nuevo evento' }}</h1>
+      <p>Los eventos públicos se muestran en la página abierta del colegio.</p>
+    </div>
+  </div>
+
+  <form class="card" method="post" novalidate>
+    {{ csrf_field() }}
+    <div class="form-grid">
+      <div class="field field--full">
+        <label for="title">Título del evento <span aria-hidden="true">*</span></label>
+        <input type="text" id="title" name="title" value="{{ form.title }}" required maxlength="180">
+      </div>
+      <div class="field">
+        <label for="start_date">Fecha de inicio <span aria-hidden="true">*</span></label>
+        <input type="date" id="start_date" name="start_date" value="{{ form.start_date }}" required>
+      </div>
+      <div class="field">
+        <label for="start_time">Hora</label>
+        <input type="time" id="start_time" name="start_time" value="{{ form.start_time }}">
+      </div>
+      <div class="field">
+        <label for="end_date">Fecha de fin</label>
+        <input type="date" id="end_date" name="end_date" value="{{ form.end_date }}">
+      </div>
+      <div class="field">
+        <label for="location">Lugar</label>
+        <input type="text" id="location" name="location" value="{{ form.location }}" maxlength="160">
+      </div>
+      <div class="field">
+        <label for="category">Categoría</label>
+        <select id="category" name="category">
+          {% for item in categories %}
+            <option value="{{ item }}" {% if form.category == item %}selected{% endif %}>
+              {{ EVENT_CATEGORY_LABELS.get(item, item) }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="audience">Público</label>
+        <select id="audience" name="audience" data-audience-select>
+          <option value="public" {% if form.audience == 'public' %}selected{% endif %}>Público general</option>
+          <option value="internal" {% if form.audience == 'internal' %}selected{% endif %}>Sólo con sesión</option>
+        </select>
+      </div>
+      <div class="field" data-internal-only hidden>
+        <label for="target_role">Dirigido a</label>
+        <select id="target_role" name="target_role">
+          <option value="">Todos los usuarios</option>
+          {% for item in roles %}
+            <option value="{{ item }}" {% if form.target_role == item %}selected{% endif %}>
+              {{ ROLE_LABELS.get(item, item) }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field" data-internal-only hidden>
+        <label for="course_id">Curso (opcional)</label>
+        <select id="course_id" name="course_id">
+          <option value="">Todos los cursos</option>
+          {% for course in courses %}
+            <option value="{{ course.id }}" {% if form.course_id|string == course.id|string %}selected{% endif %}>
+              {{ course.label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field field--full">
+        <label for="description">Descripción</label>
+        <textarea id="description" name="description" rows="4" maxlength="2000">{{ form.description }}</textarea>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">
+        {{ 'Guardar cambios' if event else 'Agregar al calendario' }}
+      </button>
+      <a class="btn btn--ghost" href="{{ url_for('admin.events') }}">Cancelar</a>
+    </div>
+  </form>
+{% endblock %}

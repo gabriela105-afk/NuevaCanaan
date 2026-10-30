@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Archivo demasiado grande{% endblock %}
+{% block content %}
+  <section class="section">
+    <div class="container" style="max-width: 640px;">
+      <div class="card text-center">
+        <h1>Archivo demasiado grande</h1>
+        <p class="muted">
+          El archivo enviado supera el límite permitido de {{ limit }} MB.
+          Reduzca el tamaño del archivo e inténtelo nuevamente.
+        </p>
+        <div class="form-actions" style="justify-content: center;">
+          <a class="btn btn--primary" href="{{ request.referrer or url_for('main.index') }}">Volver</a>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

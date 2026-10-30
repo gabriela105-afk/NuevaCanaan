@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Iniciar sesión{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block content %}
+  <section class="section">
+    <div class="container" style="max-width: 560px;">
+      <div class="card">
+        <h1>Acceso a la plataforma</h1>
+        <p class="muted small">
+          Ingrese con la cuenta institucional asignada por el colegio. Las cuentas son
+          creadas exclusivamente por la administración; no existe registro público.
+        </p>
+
+        <form method="post" action="{{ url_for('auth.login') }}" novalidate>
+          {{ csrf_field() }}
+          {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+
+          <div class="field">
+            <label for="email">Correo electrónico</label>
+            <input type="email" id="email" name="email" value="{{ email }}" required
+                   autocomplete="username" autofocus maxlength="180">
+          </div>
+
+          <div class="field mt-0" style="margin-top: 1rem;">
+            <label for="password">Contraseña</label>
+            <input type="password" id="password" name="password" required
+                   autocomplete="current-password">
+          </div>
+
+          <label class="check" style="margin-top: 1rem;">
+            <input type="checkbox" name="remember" value="1">
+            <span>Mantener la sesión iniciada en este dispositivo</span>
+          </label>
+
+          <div class="form-actions">
+            <button class="btn btn--primary btn--block" type="submit">Ingresar</button>
+          </div>
+        </form>
+
+        <hr class="divider">
+        <p class="small muted mb-0">
+          ¿Olvidó su contraseña o no cuenta con acceso? Comuníquese con la dirección del
+          colegio o utilice el
+          <a href="{{ url_for('main.contacto') }}">formulario de contacto</a>.
+        </p>
+      </div>
+
+      <p class="small muted text-center mt-2">
+        <a href="{{ url_for('main.index') }}">‹ Volver a la página de inicio</a>
+      </p>
+    </div>
+  </section>
+{% endblock %}

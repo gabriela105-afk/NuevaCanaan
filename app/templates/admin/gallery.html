@@ -1,0 +1,64 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Galería{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Galería institucional</h1>
+      <p>Las imágenes se publican en la página abierta del colegio.</p>
+    </div>
+  </div>
+
+  <form class="card" method="post" enctype="multipart/form-data">
+    {{ csrf_field() }}
+    <h2 class="card__title">Subir imagen</h2>
+    <div class="form-grid">
+      <div class="field">
+        <label for="image">Archivo de imagen</label>
+        <input type="file" id="image" name="image" accept=".png,.jpg,.jpeg,.webp" required>
+        <span class="hint">
+          Formatos: PNG, JPG o WEBP. Máximo {{ config.MAX_ATTACHMENT_MB }} MB.
+          Optimice las imágenes para conexiones lentas.
+        </span>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">Subir imagen</button>
+    </div>
+    <p class="small muted mb-0">
+      Publique únicamente fotografías con autorización institucional. No suba imágenes que
+      permitan identificar a estudiantes sin consentimiento.
+    </p>
+  </form>
+
+  <section class="mt-2">
+    <h2>Imágenes publicadas ({{ gallery|length }})</h2>
+    {% if gallery %}
+      <div class="gallery-grid">
+        {% for image in gallery %}
+          <figure class="gallery-item">
+            <img src="{{ url_for('static', filename=image.filename) }}" alt="{{ image.name }}" loading="lazy">
+            <figcaption>
+              {{ image.name }}
+              {% if current_user.role == 'admin' %}
+                <form method="post" action="{{ url_for('admin.gallery_delete') }}"
+                      data-confirm="¿Eliminar la imagen «{{ image.name }}» de la galería?">
+                  {{ csrf_field() }}
+                  <input type="hidden" name="filename" value="{{ image.filename.split('/')[-1] }}">
+                  <button class="btn btn--danger btn--sm" type="submit">Eliminar</button>
+                </form>
+              {% endif %}
+            </figcaption>
+          </figure>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="gallery-empty">
+        <p class="mb-0">Aún no hay imágenes en la galería institucional.</p>
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}
