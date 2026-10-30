@@ -158,7 +158,7 @@ def child_detail(student_id: int):
     )
     assignments = (
         Assignment.query.filter_by(course_id=course.id, is_published=True)
-        .order_by(Assignment.due_date.desc())
+        .order_by(Assignment.due_date.desc().nulls_last())
         .limit(15)
         .all()
         if course

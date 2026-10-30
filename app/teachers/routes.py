@@ -77,7 +77,7 @@ def dashboard():
 
     assignments = (
         Assignment.query.filter(Assignment.teacher_id == profile.id)
-        .order_by(Assignment.due_date.desc(), Assignment.id.desc())
+        .order_by(Assignment.due_date.desc().nulls_last(), Assignment.id.desc())
         .limit(8)
         .all()
     )
@@ -263,7 +263,7 @@ def course_detail(course_id: int):
     students = course.active_students
     assignments = (
         Assignment.query.filter_by(course_id=course.id)
-        .order_by(Assignment.due_date.desc(), Assignment.id.desc())
+        .order_by(Assignment.due_date.desc().nulls_last(), Assignment.id.desc())
         .all()
     )
     today_records = {
@@ -375,7 +375,7 @@ def grades(course_id: int):
     students = course.active_students
     assignments = (
         Assignment.query.filter_by(course_id=course.id)
-        .order_by(Assignment.due_date.desc())
+        .order_by(Assignment.due_date.desc().nulls_last())
         .all()
     )
     student_ids = {student.id for student in students}
@@ -581,7 +581,7 @@ def announcement_delete(announcement_id: int):
     students = course.active_students
     assignments = (
         Assignment.query.filter_by(course_id=course.id)
-        .order_by(Assignment.due_date.desc(), Assignment.id.desc())
+        .order_by(Assignment.due_date.desc().nulls_last(), Assignment.id.desc())
         .all()
     )
     today_records = {

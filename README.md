@@ -80,6 +80,9 @@ rol **admin** (`admin_required`). Los intentos de acceso fuera del rol devuelven
 - Python **3.11 o superior** (probado con 3.12).
 - `pip` y entorno virtual (`venv`).
 - En Windows no se usa Gunicorn; se ejecuta con `python run.py`.
+- **Base de datos:** SQLite viene incluido con Python y es el valor por defecto en
+  local. En producción se usa PostgreSQL de **Supabase** (el controlador
+  `psycopg[binary]` ya está en `requirements.txt`; no requiere compilador).
 
 ---
 
@@ -126,6 +129,8 @@ python run.py
 | `flask --app run.py seed-demo` | Carga datos **ficticios** marcados con `(DEMO)`. |
 | `flask --app run.py seed-demo --force` | Vuelve a crear los datos demo si faltan. |
 | `flask --app run.py create-admin --email X --password Y --name Z` | Crea otra cuenta administradora. |
+| `python tools/migrate_sqlite_to_postgres.py --dry-run` | Muestra qué datos se copiarían a PostgreSQL (ver sección 7.2). |
+| `python tools/migrate_sqlite_to_postgres.py --target "postgresql://..."` | Copia los datos de SQLite a Supabase. |
 
 ### Cuentas de demostración
 Contraseña común: **`Demo12345`** (sólo tras ejecutar `seed-demo`).
@@ -163,11 +168,15 @@ nueva-canaan/
 │   └── static/              # css/styles.css, js/app.js, img/
 ├── instance/                # base SQLite local (no se versiona)
 ├── tests/                   # pruebas automatizadas con pytest
-├── config.py                # configuración por entorno
+├── tools/
+│   └── migrate_sqlite_to_postgres.py   # copia los datos de SQLite a Supabase
+├── config.py                # configuración por entorno (SQLite o PostgreSQL)
 ├── run.py                   # servidor de desarrollo
 ├── wsgi.py                  # punto de entrada para Gunicorn
 ├── requirements.txt
 ├── render.yaml              # Blueprint de Render
+├── Procfile                 # comando de arranque (Render/Railway/Heroku)
+├── supabase_schema.sql      # DDL de PostgreSQL (generado, opcional)
 └── .env.example
 ```
 
@@ -211,57 +220,144 @@ Las pruebas usan una base SQLite temporal: **no** modifican `instance/nueva_cana
 
 ---
 
-## 7. Despliegue en Render
+## 7. Despliegue en producción (Render + Supabase)
 
-### 7.1 Con Blueprint (`render.yaml` incluido)
+Arquitectura:
+
+```
+Navegador  →  Render (Gunicorn + Flask)  →  Supabase (PostgreSQL)
+```
+
+- **Render** ejecuta la aplicación y sirve el sitio. Su disco es **efímero**.
+- **Supabase** aloja la base de datos PostgreSQL, así los datos sobreviven a cada
+  despliegue, reinicio o suspensión del plan gratuito de Render.
+- En local se sigue usando **SQLite** sin tocar nada (`instance/nueva_canaan.db`):
+  `config.py` elige el motor según `DATABASE_URL`.
+
+### 7.1 Crear el proyecto en Supabase y obtener la cadena de conexión
+
+1. Cree una cuenta en <https://supabase.com> y un **New project**. Guarde la
+   contraseña de la base de datos que le pida el asistente.
+2. Espere a que termine el aprovisionamiento (2–3 minutos).
+3. Vaya a **Project Settings → Database → Connection string** y copie la variante
+   **Session pooler** (puerto `5432`, host `aws-0-<region>.pooler.supabase.com`):
+
+   ```
+   postgresql://postgres.abcdefghijklm:TU_CLAVE@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+   ```
+
+   - Use el **pooler**, no la conexión directa (`db.<ref>.supabase.co`): la directa
+     sólo publica IPv6 y Render no siempre puede alcanzarla.
+   - El **Transaction pooler** (puerto `6543`) también sirve; `config.py` desactiva
+     las sentencias preparadas que ese modo no admite.
+   - Deje el esquema `postgresql://` tal cual: el código lo convierte en
+     `postgresql+psycopg://` y añade `sslmode=require` automáticamente.
+
+### 7.2 Migrar los datos locales a Supabase (una sola vez)
+
+Con el entorno virtual activo, desde la raíz del proyecto:
+
+```powershell
+# 1) Ver qué se copiaría (no escribe nada ni se conecta a Supabase)
+python tools\migrate_sqlite_to_postgres.py --dry-run
+
+# 2) Copiar: crea las tablas, copia los registros y ajusta los contadores
+python tools\migrate_sqlite_to_postgres.py --target "postgresql://postgres.xxxx:CLAVE@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
+
+# 3) Comprobar que todas las tablas tienen el mismo número de filas
+python tools\migrate_sqlite_to_postgres.py --target "postgresql://..." --verify-only
+```
+
+- Se copian usuarios (con el *hash* de la contraseña, así que **nadie tiene que
+  cambiarla**), estudiantes, cursos, comunicados, eventos, notas, asistencia,
+  mensajes, notificaciones y ajustes institucionales.
+- Si el destino ya tuviera datos, el script se detiene; use `--truncate` para
+  reemplazarlos (vacía las tablas del destino antes de copiar).
+- Si algún texto excede el largo definido en el modelo, se lista y el script se
+  detiene antes de copiar; `--allow-truncate-strings` lo recorta.
+- `--print-sql` genera `supabase_schema.sql` con el DDL equivalente, por si prefiere
+  crear las tablas pegándolo en **Supabase → SQL Editor**.
+
+> Después de migrar **no ejecute `seed-demo`** ni vuelva a correr la migración con
+> `--truncate` sobre Supabase: los datos reales ya están ahí.
+
+### 7.3 Desplegar en Render con el Blueprint (recomendado)
 
 1. Suba el proyecto a un repositorio de GitHub/GitLab.
 2. En Render: **New → Blueprint**, seleccione el repositorio y confirme.
-3. Render crea el *Web Service* `nueva-canaan` con:
-   - `buildCommand`: `pip install -r requirements.txt`
-   - `startCommand`: `python -m app.cli init-and-seed && gunicorn wsgi:app --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT`
-   - Disco persistente de 1 GB montado en `/var/data`
-   - `DATABASE_URL=sqlite:////var/data/nueva_canaan.db`
-   - `UPLOAD_FOLDER=/var/data/uploads`
-   - `SECRET_KEY` generada automáticamente
-4. Complete manualmente `ADMIN_EMAIL`, `ADMIN_PASSWORD` y `ADMIN_NAME` (marcados con
-   `sync: false`); si no los define, no se creará ninguna cuenta administradora.
+3. Render crea el *Web Service* `nueva-canaan` (plan gratuito) con:
+   - `buildCommand`: `pip install --upgrade pip && pip install -r requirements.txt`
+   - `startCommand`: `python -m app.cli init-and-seed && gunicorn wsgi:app --workers 2 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT`
+   - `healthCheckPath`: `/`
+   - `PYTHON_VERSION=3.12.6`, `FLASK_ENV=production`, `SESSION_COOKIE_SECURE=true`
+   - `SECRET_KEY` generada automáticamente por Render
+4. Cuando Render pida las variables marcadas con `sync: false`:
+   - `DATABASE_URL`: la cadena de Supabase del paso 7.1 (**obligatoria**).
+   - `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME`: déjelas vacías si ya migró los
+     datos; sólo hacen falta si arranca con la base vacía (crean la primera cuenta).
 5. Espere el despliegue y abra la URL `https://nueva-canaan.onrender.com`.
-6. Inicie sesión con la cuenta administradora y **cambie la contraseña**.
+6. Inicie sesión con sus credenciales de siempre: son las de la base migrada.
 
-### 7.2 Manual (sin Blueprint)
+### 7.4 Alternativa manual (sin Blueprint)
 
-1. **New → Web Service**, runtime Python 3, build `pip install -r requirements.txt`.
+1. **New → Web Service**, runtime Python 3, build
+   `pip install --upgrade pip && pip install -r requirements.txt`.
 2. Start command:
    ```bash
-   python -m app.cli init-and-seed && gunicorn wsgi:app --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
+   python -m app.cli init-and-seed && gunicorn wsgi:app --workers 2 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
    ```
 3. Variables de entorno mínimas: `FLASK_ENV=production`, `SECRET_KEY`,
-   `SESSION_COOKIE_SECURE=true`, `DATABASE_URL`, `UPLOAD_FOLDER`, `ADMIN_EMAIL`,
-   `ADMIN_PASSWORD`, `ADMIN_NAME`.
-4. Añada un disco persistente y móntelo en `/var/data` **antes** del primer arranque
-   si quiere conservar los datos.
+   `SESSION_COOKIE_SECURE=true`, `DATABASE_URL` y, si la base está vacía,
+   `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME`.
+4. No hace falta disco persistente: la base de datos está en Supabase.
 
-### 7.3 Persistencia de SQLite (lea esto antes de publicar)
+> `Procfile` incluye el mismo comando de arranque para plataformas que lo usen
+> (Railway, Heroku). En Render tiene prioridad el *Start Command* del panel o el
+> `startCommand` de `render.yaml`.
 
-- El sistema de archivos de un *Web Service* de Render es **efímero**: sin disco
-  persistente, la base SQLite y las imágenes subidas se pierden en cada despliegue,
-  reinicio o *spin down*.
-- El disco persistente de Render **requiere un plan de pago** (el plan gratuito no lo
-  incluye). Verifique el plan contratado; `render.yaml` declara `plan: starter`.
-- Use **un solo worker**: SQLite no admite escrituras concurrentes de varios procesos.
-  El comando de arranque ya fija `--workers 1 --threads 4`.
-- `python -m app.cli init-and-seed` es idempotente: crea tablas y ajustes que falten y no
-  duplica usuarios existentes.
-- Para un volumen de datos importante o varias instancias, migre a PostgreSQL: defina
-  `DATABASE_URL=postgresql://...` e instale el controlador correspondiente
-  (`pip install "psycopg[binary]"` y añádalo a `requirements.txt`).
+### 7.5 Archivos subidos (galería y adjuntos)
 
-### 7.4 Copias de seguridad
+La base de datos ya no depende del disco de Render, pero **los archivos sí**: el
+sistema de archivos de un *Web Service* es efímero y las imágenes subidas se
+pierden en cada despliegue. Opciones:
 
-Con disco persistente, descargue periódicamente `/var/data/nueva_canaan.db` (y la
-carpeta `uploads/`). Localmente basta con copiar `instance/nueva_canaan.db`.
-También puede recrear el esquema y los datos mínimos con `flask --app run.py init-db`.
+1. **Plan de pago + disco persistente**: descomente el bloque `disk` al final de
+   `render.yaml` y defina `UPLOAD_FOLDER=/var/data/uploads`.
+2. **Supabase Storage** (recomendado a futuro): requiere adaptar las funciones de
+   `app/utils.py` que guardan y leen archivos.
+
+Mientras no se resuelva, suba las imágenes justo después de desplegar o guarde una
+copia local de `instance/uploads` como respaldo.
+
+### 7.6 Copias de seguridad
+
+- Supabase (plan gratuito) guarda respaldos diarios durante 7 días: **Database →
+  Backups**.
+- Respaldo manual: `pg_dump "postgresql://postgres.xxxx:CLAVE@aws-0-...:5432/postgres" > respaldo.sql`
+- Localmente: copie `instance/nueva_canaan.db` y `instance/uploads/`.
+- Para volver a cargar un respaldo en Supabase: **SQL Editor** (consulta el archivo)
+  o `psql "postgresql://..." -f respaldo.sql`.
+
+### 7.7 Verificación después del despliegue
+
+1. Portada, institución, calendario y formulario de contacto cargan.
+2. Inicio de sesión con cada rol (administración, dirección, docente, familia, estudiante).
+3. Crear un comunicado y comprobar que aparece en el panel y en la portada.
+4. Registrar asistencia o una nota, cerrar sesión y volver a entrar: si persiste,
+   se está leyendo de Supabase.
+5. Crear un usuario nuevo y subir una imagen: confirma que los `INSERT` funcionan y
+   que los identificadores no chocan (secuencias ya ajustadas por el script).
+
+### 7.8 Problemas frecuentes
+
+| Síntoma | Causa probable | Solución |
+| --- | --- | --- |
+| `ModuleNotFoundError: psycopg` | build sin el controlador | revise `requirements.txt` y redespliegue |
+| timeout o `could not translate host name` | conexión directa (IPv6) o host mal copiado | use la cadena del *Session pooler* |
+| `prepared statement "s0" already exists` | Transaction pooler sin desactivar sentencias preparadas | no edite `config.py`: ya lo hace en el puerto 6543 |
+| `SSL connection is required` | falta `sslmode` en la URL | mantenga `DATABASE_SSLMODE=require` |
+| `duplicate key value violates unique constraint` | secuencias sin ajustar | vuelva a ejecutar el script con `--truncate` |
+| El sitio da error 500 y los datos «desaparecen» | `DATABASE_URL` vacía → Render usa SQLite efímero | defina la variable en Render |
 
 ---
 
@@ -297,6 +393,11 @@ disponibles (mismos nombres y rutas o ajuste las variables de entorno).
 - La mensajería es interna entre usuarios de la plataforma; no hay adjuntos en mensajes
   (sólo imágenes en la galería y en los comunicados).
 - La autenticación de dos factores no está implementada.
-- SQLite está pensado para una única instancia con pocas decenas de usuarios
-  concurrentes.
+- La base SQLite local está pensada para una única instancia con pocas decenas de
+  usuarios concurrentes; en producción se usa PostgreSQL (Supabase), que sí admite
+  varios procesos. El *pool* de conexiones está limitado en `config.py`
+  (`DB_POOL_SIZE`, `DB_MAX_OVERFLOW`) para no agotar el límite del plan gratuito.
+- Los archivos subidos (galería y adjuntos de comunicados) viven en el disco de
+  Render y se pierden al redesplegar; requieren disco persistente o Supabase Storage
+  (ver sección 7.5).
 

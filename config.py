@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from dotenv import load_dotenv
 
@@ -39,18 +40,109 @@ def _database_uri() -> str:
     """Devuelve la URI de base de datos configurada.
 
     - Local / por defecto: SQLite dentro de ``instance/`` (no versionado en Git).
-    - Render: definir ``DATABASE_URL`` apuntando a la ruta del disco persistente,
+    - Producción: PostgreSQL en Supabase mediante ``DATABASE_URL``.
+    - También se admite un archivo SQLite en un disco persistente de Render,
       por ejemplo ``sqlite:////var/data/nueva_canaan.db``.
-    - PostgreSQL: definir ``DATABASE_URL`` con el DSN provisto por el proveedor.
     """
     url = os.getenv("DATABASE_URL", "").strip()
     if not url:
         INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
         return f"sqlite:///{(INSTANCE_DIR / 'nueva_canaan.db').as_posix()}"
-    # Render / Heroku entregan el esquema antiguo "postgres://"
-    if url.startswith("postgres://"):
-        url = url.replace("postgres://", "postgresql://", 1)
-    return url
+    return normalize_database_url(url)
+
+
+# Driver de PostgreSQL usado por defecto (psycopg 3, ver requirements.txt).
+POSTGRES_DRIVER = "psycopg"
+
+# Parámetros de conexión que otros clientes (Prisma, PgBouncer, etc.) añaden a la
+# URL y que el driver de Python no entiende.
+_UNSUPPORTED_QUERY_KEYS = {"pgbouncer", "connection_limit", "pool_timeout", "schema"}
+
+# Hosts que no usan TLS (desarrollo local).
+_LOCAL_HOSTS = {"", "localhost", "127.0.0.1", "::1", "host.docker.internal"}
+
+
+def is_postgres_uri(uri: str) -> bool:
+    """Indica si la URI corresponde a PostgreSQL."""
+    return (uri or "").strip().lower().startswith(("postgres://", "postgresql://"))
+
+
+def normalize_database_url(url: str, default_driver: str = POSTGRES_DRIVER) -> str:
+    """Normaliza una URL de base de datos para que SQLAlchemy la entienda.
+
+    - ``postgres://`` (esquema antiguo de Render/Heroku) → ``postgresql+psycopg://``.
+    - ``postgresql://`` sin driver → ``postgresql+<default_driver>://``.
+    - Añade ``sslmode=require`` en hosts remotos como Supabase (se puede desactivar
+      con la variable de entorno ``DATABASE_SSLMODE=disable``).
+    - Elimina parámetros que sólo entienden otros clientes.
+
+    Las URL que no son de PostgreSQL (por ejemplo SQLite) se devuelven sin cambios.
+    """
+    url = (url or "").strip()
+    if not url or not is_postgres_uri(url):
+        return url
+
+    scheme, _, rest = url.partition("://")
+    if "+" not in scheme:
+        scheme = f"postgresql+{default_driver}"
+    parts = urlsplit(f"{scheme}://{rest}")
+
+    query = [
+        (key, value)
+        for key, value in parse_qsl(parts.query, keep_blank_values=True)
+        if key.lower() not in _UNSUPPORTED_QUERY_KEYS
+    ]
+    sslmode = (os.getenv("DATABASE_SSLMODE") or "require").strip().lower()
+    has_ssl_option = any(key.lower() in {"sslmode", "ssl"} for key, _ in query)
+    is_remote_host = (parts.hostname or "").lower() not in _LOCAL_HOSTS
+    if not has_ssl_option and sslmode not in {"", "disable"} and is_remote_host:
+        query.append(("sslmode", sslmode))
+
+    return urlunsplit((scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+
+
+def mask_database_uri(uri: str) -> str:
+    """Devuelve la URI sin la contraseña, para registros y mensajes de consola.
+
+    Se usa al iniciar la aplicación: en los logs de Render queda constancia de a
+    qué base de datos se está conectando, sin exponer la clave de Supabase.
+    """
+    uri = (uri or "").strip()
+    if not uri:
+        return "(sin definir)"
+    scheme, separator, rest = uri.partition("://")
+    if not separator or "@" not in rest:
+        return uri
+    credentials, _, host = rest.rpartition("@")
+    user = credentials.split(":", 1)[0]
+    return f"{scheme}://{user}:***@{host}"
+
+
+def _engine_options(uri: str) -> dict:
+    """Opciones del motor de SQLAlchemy según el tipo de base de datos.
+
+    En PostgreSQL se limita el tamaño del pool: Supabase (plan gratuito) cierra
+    las conexiones inactivas y tiene un número máximo de clientes reducido.
+    """
+    if uri.startswith("sqlite"):
+        return {"pool_pre_ping": True}
+
+    options: dict = {
+        "pool_pre_ping": True,
+        "pool_recycle": _env_int("DB_POOL_RECYCLE", 280),
+        "pool_size": _env_int("DB_POOL_SIZE", 4),
+        "max_overflow": _env_int("DB_MAX_OVERFLOW", 2),
+        "pool_timeout": _env_int("DB_POOL_TIMEOUT", 30),
+    }
+    if "+psycopg:" in uri and ":6543" in uri:
+        # Puerto 6543 = "Transaction pooler" de Supabase: no admite sentencias
+        # preparadas, así que se desactivan en el driver.
+        options["connect_args"] = {"prepare_threshold": 0}
+    return options
+
+
+_DATABASE_URI = _database_uri()
+
 
 
 class Config:
@@ -63,9 +155,9 @@ class Config:
     PREFERRED_URL_SCHEME = "https"
 
     # --- Base de datos ------------------------------------------------
-    SQLALCHEMY_DATABASE_URI = _database_uri()
+    SQLALCHEMY_DATABASE_URI = _DATABASE_URI
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
+    SQLALCHEMY_ENGINE_OPTIONS = _engine_options(_DATABASE_URI)
 
     # --- Sesiones y cookies -------------------------------------------
     SESSION_COOKIE_HTTPONLY = True

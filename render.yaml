@@ -1,25 +1,31 @@
 # Configuración declarativa para Render (Blueprint).
 # Documentación: https://render.com/docs/blueprint-spec
 #
-# NOTA IMPORTANTE SOBRE PERSISTENCIA:
-# El sistema de archivos de un Web Service de Render es EFÍMERO.
-# Para conservar la base SQLite entre despliegues/reinicios se declara un
-# disco persistente montado en /var/data y la base vive en /var/data/.
-# El disco persistente requiere un plan de pago de Render; verifique las
-# condiciones del plan antes de asumir persistencia.
+# ARQUITECTURA
+#   Render  → ejecuta Flask con Gunicorn y sirve el sitio + los paneles.
+#   Supabase → aloja la base de datos PostgreSQL (DATABASE_URL).
+#
+# La base de datos YA NO vive en el disco de Render: así los datos sobreviven a
+# cada despliegue, reinicio o suspensión del servicio gratuito.
+#
+# NOTA SOBRE ARCHIVOS ADJUNTOS (comunicados y galería):
+#   El sistema de archivos de un Web Service es EFÍMERO. Los archivos subidos se
+#   pierden al redesplegar. Opciones:
+#     1) Plan de pago + disco persistente (descomentar el bloque `disk` y la
+#        variable UPLOAD_FOLDER del final de este archivo).
+#     2) Guardarlos en Supabase Storage (requiere adaptar app/utils.py).
 
 services:
   - type: web
     name: nueva-canaan
     runtime: python
-    plan: starter
+    plan: free
     region: oregon
     buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
-    # Un único worker con varios hilos: SQLite no soporta escrituras concurrentes
-    # de varios procesos. La inicialización de datos se ejecuta UNA sola vez
-    # (init_and_seed es idempotente y protegido por el bloqueo de la tabla de
-    # ajustes institucionales).
-    startCommand: "python -m app.cli init-and-seed && gunicorn wsgi:app --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT"
+    # Con PostgreSQL se pueden usar varios procesos: el pool de conexiones está
+    # limitado en config.py (DB_POOL_SIZE / DB_MAX_OVERFLOW) para no agotar el
+    # límite de clientes del plan gratuito de Supabase.
+    startCommand: "python -m app.cli init-and-seed && gunicorn wsgi:app --workers 2 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT"
     healthCheckPath: /
     autoDeploy: true
     envVars:
@@ -31,17 +37,19 @@ services:
         generateValue: true
       - key: SESSION_COOKIE_SECURE
         value: "true"
+      # Cadena de conexión de Supabase (Database → Connection string → Session pooler).
+      # Se define en el panel de Render y NUNCA se guarda en GitHub.
       - key: DATABASE_URL
-        value: sqlite:////var/data/nueva_canaan.db
-      - key: UPLOAD_FOLDER
-        value: /var/data/uploads
+        sync: false
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
       - key: ADMIN_NAME
         sync: false
-    disk:
-      name: nueva-canaan-data
-      mountPath: /var/data
-      sizeGB: 1
+    # --- Sólo con plan de pago (disco persistente para archivos subidos) ---
+    # disk:
+    #   name: nueva-canaan-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
+

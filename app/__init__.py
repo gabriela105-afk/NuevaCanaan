@@ -14,7 +14,7 @@ from flask_wtf.csrf import CSRFError
 from markupsafe import Markup, escape
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
-from config import INSTANCE_DIR, get_config
+from config import INSTANCE_DIR, get_config, mask_database_uri
 from .extensions import csrf, db, login_manager, migrate
 from .models import (
     ANNOUNCEMENT_CATEGORY_LABELS,
@@ -71,6 +71,12 @@ def create_app(config_name: str | None = None, overrides: dict | None = None) ->
         "Plataforma Nueva Canaán iniciada (entorno=%s, depuración=%s)",
         os.getenv("FLASK_ENV", "development"),
         app.config["DEBUG"],
+    )
+    # Deja constancia en los logs de Render de qué base de datos se está usando
+    # (SQLite efímero o PostgreSQL de Supabase), sin mostrar la contraseña.
+    app.logger.info(
+        "Base de datos en uso: %s",
+        mask_database_uri(app.config["SQLALCHEMY_DATABASE_URI"]),
     )
     return app
 
