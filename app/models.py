@@ -8,6 +8,7 @@ en ``app/extensions.py``.
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from pathlib import Path
 
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -962,6 +963,251 @@ class InstitutionSetting(db.Model):
             db.session.add(row)
         else:
             row.value = value
+
+
+# ===========================================================================
+# NUEVA CANAÁN NOTICIAS: muro público de publicaciones
+# ===========================================================================
+NEWS_CATEGORIES = (
+    "institucional",
+    "civico",
+    "deportivo",
+    "campeonato",
+    "convocatoria",
+    "comunicado",
+    "evento",
+    "cultural",
+)
+
+NEWS_CATEGORY_LABELS = {
+    "institucional": "Noticia institucional",
+    "civico": "Acto cívico y desfile",
+    "deportivo": "Actividad deportiva",
+    "campeonato": "Campeonato y competencia",
+    "convocatoria": "Convocatoria",
+    "comunicado": "Comunicado oficial",
+    "evento": "Evento institucional",
+    "cultural": "Actividad cultural",
+}
+
+NEWS_STATUSES = ("draft", "published", "archived")
+
+NEWS_STATUS_LABELS = {
+    "draft": "Borrador",
+    "published": "Publicada",
+    "archived": "Archivada",
+}
+
+NEWS_COMMENT_STATUSES = ("approved", "hidden")
+
+NEWS_COMMENT_STATUS_LABELS = {
+    "approved": "Visible",
+    "hidden": "Oculto",
+}
+
+
+class NewsPost(TimestampMixin, db.Model):
+    """Publicación del muro de NUEVA CANAÁN NOTICIAS.
+
+    Cada publicación puede llevar una fotografía principal (ver ``cover_image``),
+    reacciones anónimas ("me gusta") y comentarios moderables.
+    """
+
+    __tablename__ = "news_posts"
+    __table_args__ = (
+        db.CheckConstraint(
+            "status IN ('draft','published','archived')", name="ck_news_post_status"
+        ),
+        db.Index("ix_news_posts_status_publication", "status", "published_at"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(180), nullable=False)
+    summary = db.Column(db.String(300))
+    body = db.Column(db.Text, nullable=False)
+    category = db.Column(
+        db.String(30), nullable=False, default="institucional", index=True
+    )
+    status = db.Column(db.String(20), nullable=False, default="draft", index=True)
+    is_pinned = db.Column(db.Boolean, nullable=False, default=False)
+    allow_comments = db.Column(db.Boolean, nullable=False, default=True)
+    published_at = db.Column(db.DateTime, index=True)
+
+    author_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"))
+    author = db.relationship("User", foreign_keys=[author_id])
+
+    images = db.relationship(
+        "NewsImage",
+        back_populates="post",
+        cascade="all, delete-orphan",
+        order_by="NewsImage.position",
+    )
+    comments = db.relationship(
+        "NewsComment",
+        back_populates="post",
+        cascade="all, delete-orphan",
+        order_by="NewsComment.created_at",
+    )
+    reactions = db.relationship(
+        "NewsReaction", back_populates="post", cascade="all, delete-orphan"
+    )
+
+    # --- Presentación -------------------------------------------------
+    @property
+    def cover_image(self):
+        """Fotografía principal de la publicación (la primera cargada)."""
+        return self.images[0] if self.images else None
+
+    @property
+    def excerpt(self) -> str:
+        """Texto corto para las tarjetas del muro."""
+        text = (self.summary or self.body or "").strip()
+        if len(text) <= 260:
+            return text
+        return text[:257].rstrip() + "…"
+
+    @property
+    def category_label(self) -> str:
+        return NEWS_CATEGORY_LABELS.get(self.category, self.category)
+
+    @property
+    def status_label(self) -> str:
+        return NEWS_STATUS_LABELS.get(self.status, self.status)
+
+    @property
+    def author_name(self) -> str:
+        return self.author.full_name if self.author else "Equipo de comunicación"
+
+    @property
+    def likes_count(self) -> int:
+        return len(self.reactions)
+
+    @property
+    def comments_count(self) -> int:
+        return sum(1 for comment in self.comments if comment.status == "approved")
+
+    @property
+    def is_published(self) -> bool:
+        return self.status == "published"
+
+    def is_visible_to(self, user) -> bool:
+        """El público sólo ve publicaciones publicadas; el personal ve todo."""
+        if self.status == "published":
+            return True
+        return bool(user is not None and getattr(user, "is_staff", False))
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<NewsPost {self.title!r} ({self.status})>"
+
+
+class NewsImage(db.Model):
+    """Fotografía asociada a una publicación del muro de noticias."""
+
+    __tablename__ = "news_images"
+
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(
+        db.Integer,
+        db.ForeignKey("news_posts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    path = db.Column(db.String(255), nullable=False)  # relativa a UPLOAD_FOLDER
+    name = db.Column(db.String(255))
+    mime = db.Column(db.String(120))
+    size = db.Column(db.Integer)
+    alt = db.Column(db.String(180))
+    position = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+
+    post = db.relationship("NewsPost", back_populates="images")
+
+    @property
+    def is_available(self) -> bool:
+        """¿El archivo sigue existiendo en el disco?
+
+        En Render el sistema de archivos es efímero: si la fotografía desapareció
+        tras un despliegue, el muro muestra un marcador neutro en lugar de una
+        imagen rota.
+        """
+        from flask import current_app  # importación local: evita ciclos
+
+        if not self.path:
+            return False
+        try:
+            base = Path(current_app.config["UPLOAD_FOLDER"]).resolve()
+            target = (base / self.path).resolve()
+        except (KeyError, OSError, ValueError):
+            return False
+        if base != target and base not in target.parents:
+            return False
+        return target.is_file()
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<NewsImage {self.path!r}>"
+
+
+class NewsReaction(db.Model):
+    """Reacción "me gusta" de un visitante anónimo o de un usuario con sesión."""
+
+    __tablename__ = "news_reactions"
+    __table_args__ = (
+        db.UniqueConstraint("post_id", "visitor_key", name="uq_news_reaction_visitor"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(
+        db.Integer,
+        db.ForeignKey("news_posts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    visitor_key = db.Column(db.String(64), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"))
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+
+    post = db.relationship("NewsPost", back_populates="reactions")
+    user = db.relationship("User")
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<NewsReaction post={self.post_id} visitor={self.visitor_key}>"
+
+
+class NewsComment(db.Model):
+    """Comentario del público en una publicación del muro."""
+
+    __tablename__ = "news_comments"
+    __table_args__ = (
+        db.CheckConstraint(
+            "status IN ('approved','hidden')", name="ck_news_comment_status"
+        ),
+        db.Index("ix_news_comments_post_status", "post_id", "status"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(
+        db.Integer,
+        db.ForeignKey("news_posts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    author_name = db.Column(db.String(80), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="approved", index=True)
+    visitor_key = db.Column(db.String(64))
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"))
+    ip_address = db.Column(db.String(60))
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False, index=True)
+
+    post = db.relationship("NewsPost", back_populates="comments")
+    user = db.relationship("User")
+
+    @property
+    def status_label(self) -> str:
+        return NEWS_COMMENT_STATUS_LABELS.get(self.status, self.status)
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<NewsComment post={self.post_id} {self.author_name!r}>"
 
 
 

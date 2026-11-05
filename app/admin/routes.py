@@ -35,6 +35,8 @@ from ..models import (
     CourseAssignment,
     Event,
     Message,
+    NewsComment,
+    NewsPost,
     Notification,
     Parent,
     ParentStudent,
@@ -106,6 +108,9 @@ def dashboard():
         ).count(),
         "unread_contact": ContactMessage.query.filter_by(is_read=False).count(),
         "messages": Message.query.filter_by(recipient_id=current_user.id, read_at=None).count(),
+        "news_published": NewsPost.query.filter_by(status="published").count(),
+        "news_drafts": NewsPost.query.filter_by(status="draft").count(),
+        "news_comments": NewsComment.query.filter_by(status="approved").count(),
     }
     recent_announcements = (
         Announcement.query.order_by(Announcement.created_at.desc()).limit(5).all()

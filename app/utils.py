@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import re
 import uuid
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from functools import wraps
 from pathlib import Path
 
@@ -239,6 +239,68 @@ def delete_upload(relative_path: str | None) -> None:
         current_app.logger.warning("No se pudo borrar el archivo %s", relative_path)
 
 
+def _image_format(data: bytes) -> str | None:
+    """Detecta el formato real de una imagen por su firma binaria."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpeg"
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
+def save_image_upload(file_storage, subfolder: str = "noticias"):
+    """Valida y guarda una fotografía subida desde el panel.
+
+    Comprueba la extensión, el tamaño y la firma binaria del archivo (sin
+    dependencias externas como Pillow). Devuelve ``(metadata, error)`` con la
+    misma estructura que :func:`save_upload`.
+    """
+    if file_storage is None or not file_storage.filename:
+        return None, None
+
+    display_name = clean(file_storage.filename, 255)
+    if not allowed_extension(display_name, current_app.config["ALLOWED_IMAGE_EXTENSIONS"]):
+        return None, "Formato de imagen no permitido. Use PNG, JPG o WEBP."
+
+    max_mb = current_app.config["MAX_ATTACHMENT_MB"]
+    data = file_storage.read()
+    if not data:
+        return None, "La imagen está vacía."
+    if len(data) > max_mb * 1024 * 1024:
+        return None, f"La imagen supera el tamaño máximo permitido ({max_mb} MB)."
+
+    detected = _image_format(data)
+    if detected is None:
+        return None, "El archivo no parece una imagen válida (PNG, JPG o WEBP)."
+
+    extension = "jpg" if detected == "jpeg" else detected
+    mime = {
+        "png": "image/png",
+        "jpg": "image/jpeg",
+        "webp": "image/webp",
+    }[extension]
+
+    safe_base = secure_filename(display_name.rsplit(".", 1)[0])[:40] or "foto"
+    stored_name = f"{safe_base}-{uuid.uuid4().hex[:10]}.{extension}"
+
+    folder = Path(current_app.config["UPLOAD_FOLDER"]) / subfolder
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / stored_name).write_bytes(data)
+
+    return (
+        {
+            "path": f"{subfolder}/{stored_name}",
+            "name": display_name,
+            "mime": mime,
+            "size": len(data),
+            "extension": extension,
+        },
+        None,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Notificaciones internas
 # ---------------------------------------------------------------------------
@@ -344,6 +406,54 @@ def format_bytes(size: int | None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Fechas locales de NUEVA CANAÁN NOTICIAS
+# ---------------------------------------------------------------------------
+def local_datetime(value):
+    """Convierte una fecha UTC almacenada a la hora local institucional.
+
+    El desfase se configura con ``UTC_OFFSET_HOURS`` (por defecto -4, hora de
+    Bolivia). Se evita ``zoneinfo`` para no exigir la base de datos de zonas
+    horarias en Windows ni en Render.
+    """
+    if value is None:
+        return None
+    try:
+        offset = int(current_app.config.get("UTC_OFFSET_HOURS", -4))
+    except (TypeError, ValueError):  # pragma: no cover - configuración inválida
+        offset = -4
+    return value + timedelta(hours=offset)
+
+
+def format_news_datetime(value) -> str:
+    """Ej.: ``5 de noviembre de 2026 · 10:32``."""
+    local = local_datetime(value)
+    if local is None:
+        return ""
+    return f"{local.day} de {MONTHS_ES[local.month - 1]} de {local.year} · {local:%H:%M}"
+
+
+def format_time_ago(value) -> str:
+    """Texto relativo para las tarjetas del muro (``Hace 5 minutos``)."""
+    if value is None:
+        return ""
+    seconds = int((datetime.utcnow() - value).total_seconds())
+    if seconds < 60:
+        return "Hace un momento"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"Hace {minutes} minuto{'s' if minutes != 1 else ''}"
+    hours = minutes // 60
+    if hours < 24:
+        return f"Hace {hours} hora{'s' if hours != 1 else ''}"
+    days = hours // 24
+    if days == 1:
+        return "Ayer"
+    if days < 7:
+        return f"Hace {days} días"
+    return format_news_datetime(value).split(" · ")[0]
+
+
+# ---------------------------------------------------------------------------
 # Ajustes institucionales
 # ---------------------------------------------------------------------------
 SETTING_DEFAULTS: dict[str, str] = {
@@ -366,6 +476,8 @@ SETTING_DEFAULTS: dict[str, str] = {
     "facebook": "",
     "instagram": "",
     "director": "",
+    "nombre_portal": "Nueva Canaán Noticias",
+    "portal_lema": "Noticias, actividades y logros de nuestra comunidad educativa",
     "nota_privacidad": (
         "Esta plataforma no publica listas de estudiantes, calificaciones ni datos "
         "personales. La información académica sólo está disponible para los tutores "
@@ -390,6 +502,8 @@ SETTING_LABELS: dict[str, str] = {
     "facebook": "Página de Facebook",
     "instagram": "Cuenta de Instagram",
     "director": "Autoridad máxima (nombre y cargo)",
+    "nombre_portal": "Nombre del portal de noticias",
+    "portal_lema": "Lema del portal de noticias",
     "nota_privacidad": "Nota de privacidad",
 }
 

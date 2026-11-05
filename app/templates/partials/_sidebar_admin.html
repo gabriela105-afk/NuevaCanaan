@@ -4,6 +4,9 @@
    href="{{ url_for('admin.dashboard') }}">Panel general</a>
 <a class="sidebar__link {{ 'is-active' if request.endpoint in ('admin.announcements', 'admin.announcement_new', 'admin.announcement_edit') }}"
    href="{{ url_for('admin.announcements') }}">Comunicados</a>
+{% set news_endpoints = ('news_admin.posts', 'news_admin.post_new', 'news_admin.post_edit', 'news_admin.comments') %}
+<a class="sidebar__link {{ 'is-active' if request.endpoint in news_endpoints }}"
+   href="{{ url_for('news_admin.posts') }}">Noticias del muro</a>
 <a class="sidebar__link {{ 'is-active' if request.endpoint in ('admin.events', 'admin.event_new', 'admin.event_edit') }}"
    href="{{ url_for('admin.events') }}">Calendario escolar</a>
 <a class="sidebar__link {{ 'is-active' if request.endpoint == 'admin.notifications' }}"

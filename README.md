@@ -16,6 +16,8 @@ privados (administración/dirección, docentes y familias).
 
 ### Sitio público
 - Portada con presentación, accesos rápidos, últimos comunicados y próximas actividades.
+- **NUEVA CANAÁN NOTICIAS**: muro público de publicaciones con fotografía, categorías,
+  búsqueda, reacciones «me gusta» y comentarios del público.
 - Página institucional (historia, misión, visión, autoridades — textos editables).
 - Comunicados publicados con detalle, categoría y prioridad.
 - Calendario de actividades con vista mensual navegable.
@@ -33,6 +35,8 @@ privados (administración/dirección, docentes y familias).
 
 ### Panel de administración / dirección
 - Tablero con indicadores institucionales.
+- Noticias del muro: publicaciones con fotografía, fijado, borrador/publicado,
+  archivo y moderación de los comentarios del público (admin y dirección).
 - Comunicados: borrador/publicado, público/interno, fijado, vencimiento y envío de
   notificaciones a los destinatarios (admin y dirección).
 - Calendario: actividades públicas e internas (admin y dirección).
@@ -49,6 +53,7 @@ privados (administración/dirección, docentes y familias).
 | Usuarios, roles y contraseñas | ✅ | — | — | — |
 | Cursos, estudiantes, familias y docentes | ✅ | — | — | — |
 | Comunicados, calendario, galería y configuración | ✅ | ✅ | — | — |
+| Noticias del muro (publicaciones y moderación) | ✅ | ✅ | — | — |
 | Auditoría y buzón del formulario de contacto | ✅ | ✅ | — | — |
 | Avisos, asistencia, notas y tareas de sus cursos | — | — | ✅ | — |
 | Sus hijos/as, comunicados, calendario y mensajería | — | — | — | ✅ |
@@ -160,12 +165,14 @@ nueva-canaan/
 │   ├── main/                # sitio público (portada, institución, calendario, contacto)
 │   ├── auth/                # login, logout, perfil, cambio de contraseña
 │   ├── announcements/       # comunicados públicos
+│   ├── news/                # muro público NUEVA CANAÁN NOTICIAS (fotos, likes, comentarios)
+│   ├── news_admin/          # panel de noticias: publicaciones y moderación
 │   ├── admin/               # panel de administración y dirección
 │   ├── teachers/            # panel docente
 │   ├── parents/             # panel de familias
 │   ├── messages/            # mensajería interna y notificaciones
 │   ├── templates/           # plantillas Jinja2 (públicas, paneles, errores)
-│   └── static/              # css/styles.css, js/app.js, img/
+│   └── static/              # css/styles.css, css/news.css, js/app.js, js/news.js, img/
 ├── instance/                # base SQLite local (no se versiona)
 ├── tests/                   # pruebas automatizadas con pytest
 ├── tools/
@@ -193,6 +200,9 @@ nueva-canaan/
 - Bloqueo temporal de la cuenta tras `LOGIN_MAX_ATTEMPTS` intentos fallidos.
 - Cookies `HttpOnly`, `SameSite=Lax` y `Secure` en producción (`SESSION_COOKIE_SECURE`).
 - Validación y limpieza de entradas; límite de tamaño de subida (`MAX_UPLOAD_MB`).
+- Comentarios del muro de noticias con campo trampa antispam, límite por sesión/IP y
+  moderación desde el panel; las fotografías se entregan por una ruta controlada
+  (`/noticias/foto/<id>`) que no expone el disco y oculta las de borradores.
 - Nombres de archivo saneados con `secure_filename` y verificación de extensión.
 - Registro de auditoría de acciones administrativas (sin datos sensibles).
 - Mensajes de error genéricos en el login para no revelar si un correo existe.
@@ -212,8 +222,9 @@ python -m pytest                            # Linux / macOS
 
 Cubren el sitio público y el formulario de contacto, la autenticación (bloqueo,
 CSRF, cambio de contraseña), la autorización por rol y el aislamiento de datos, los
-flujos de comunicados, calendario, tareas, asistencia, notas y mensajería, y una
-prueba de humo que recorre todas las rutas `GET` con cada rol y verifica que los
+flujos de comunicados, calendario, tareas, asistencia, notas y mensajería, el muro
+de noticias (filtros, fotografías, «me gusta», comentarios, antispam y moderación) y
+una prueba de humo que recorre todas las rutas `GET` con cada rol y verifica que los
 enlaces internos de cada panel sean accesibles (sin 403/404) para ese rol.
 
 Las pruebas usan una base SQLite temporal: **no** modifican `instance/nueva_canaan.db`.
@@ -277,6 +288,11 @@ python tools\migrate_sqlite_to_postgres.py --target "postgresql://..." --verify-
   detiene antes de copiar; `--allow-truncate-strings` lo recorta.
 - `--print-sql` genera `supabase_schema.sql` con el DDL equivalente, por si prefiere
   crear las tablas pegándolo en **Supabase → SQL Editor**.
+- Si su base de Supabase ya existía antes de agregar el **muro de noticias**, cree sólo
+  las tablas nuevas (`news_posts`, `news_images`, `news_comments`, `news_reactions`)
+  sin copiar datos: `python tools/migrate_sqlite_to_postgres.py --target "postgresql://..."
+  --schema-only`. `create_all` no toca las tablas que ya existen. Si el comando avisa
+  que faltan tablas en el origen, ejecute antes `flask --app run.py init-db`.
 
 > Después de migrar **no ejecute `seed-demo`** ni vuelva a correr la migración con
 > `--truncate` sobre Supabase: los datos reales ya están ahí.
@@ -397,7 +413,7 @@ disponibles (mismos nombres y rutas o ajuste las variables de entorno).
   usuarios concurrentes; en producción se usa PostgreSQL (Supabase), que sí admite
   varios procesos. El *pool* de conexiones está limitado en `config.py`
   (`DB_POOL_SIZE`, `DB_MAX_OVERFLOW`) para no agotar el límite del plan gratuito.
-- Los archivos subidos (galería y adjuntos de comunicados) viven en el disco de
-  Render y se pierden al redesplegar; requieren disco persistente o Supabase Storage
-  (ver sección 7.5).
+- Los archivos subidos (galería, adjuntos de comunicados y fotografías del muro de
+  noticias) viven en el disco de Render y se pierden al redesplegar; requieren disco
+  persistente o Supabase Storage (ver sección 7.5).
 

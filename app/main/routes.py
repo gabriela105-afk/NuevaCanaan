@@ -18,9 +18,10 @@ from flask import (
 )
 from flask_login import current_user
 from sqlalchemy import or_
+from sqlalchemy.orm import selectinload
 
 from ..extensions import db
-from ..models import Announcement, ContactMessage, Event, User, utcnow
+from ..models import Announcement, ContactMessage, Event, NewsPost, User, utcnow
 from ..utils import (
     clean,
     clean_multiline,
@@ -83,11 +84,27 @@ def index():
         .all()
     )
     events = _visible_events(today, today + timedelta(days=90))[:4]
+    news_posts = (
+        NewsPost.query.filter(NewsPost.status == "published")
+        .options(
+            selectinload(NewsPost.images),
+            selectinload(NewsPost.comments),
+            selectinload(NewsPost.reactions),
+        )
+        .order_by(
+            NewsPost.is_pinned.desc(),
+            NewsPost.published_at.desc(),
+            NewsPost.id.desc(),
+        )
+        .limit(3)
+        .all()
+    )
     return render_template(
         "index.html",
         announcements=announcements,
         events=events,
         gallery=gallery_images()[:6],
+        news_posts=news_posts,
     )
 
 

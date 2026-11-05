@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% from "partials/_macros.html" import csrf_field %}
+{% block title %}{{ post.title }}{% endblock %}
+{% block description %}{{ post.summary or post.excerpt }}{% endblock %}
+
+{% block content %}
+  {% set is_staff_view = current_user.is_authenticated and current_user.is_staff %}
+  <div class="container news-detail">
+    <ul class="breadcrumb">
+      <li><a href="{{ url_for('main.index') }}">Inicio</a></li>
+      <li><a href="{{ url_for('news.index') }}">{{ institution.nombre_portal or 'Nueva Canaán Noticias' }}</a></li>
+      <li><a href="{{ url_for('news.index', categoria=post.category) }}">{{ post.category_label }}</a></li>
+    </ul>
+
+    <div class="news-detail__layout">
+      <article class="post post--detail" id="noticia-{{ post.id }}">
+        <header class="post__head">
+          <span class="post__avatar" aria-hidden="true">NC</span>
+          <div class="post__who">
+            <p class="post__page">{{ institution.nombre_portal or 'Nueva Canaán Noticias' }}</p>
+            <p class="post__meta">
+              <span class="post__category">{{ post.category_label }}</span>
+              <span aria-hidden="true">·</span>
+              <span>Publicado por {{ post.author_name }}</span>
+              {% if post.published_at %}
+                <span aria-hidden="true">·</span>
+                <time datetime="{{ post.published_at.isoformat() }}">{{ post.published_at|newsdate }}</time>
+              {% endif %}
+            </p>
+          </div>
+          {% if post.is_pinned %}<span class="badge badge--gold">Destacada</span>{% endif %}
+          {% if not post.is_published %}<span class="badge badge--warning">Vista previa</span>{% endif %}
+        </header>
+
+        <div class="post__text">
+          <h1 class="post__title post__title--detail">{{ post.title }}</h1>
+          {% if post.summary %}<p class="post__lead">{{ post.summary }}</p>{% endif %}
+        </div>
+
+        {% if post.cover_image and post.cover_image.is_available %}
+          <figure class="post__media post__media--detail">
+            <img src="{{ url_for('news.image', image_id=post.cover_image.id) }}"
+                 alt="{{ post.cover_image.alt or post.title }}">
+            <figcaption>{{ post.cover_image.name }}</figcaption>
+          </figure>
+        {% endif %}
+
+        <div class="news-article__body">{{ post.body|nl2br }}</div>
+
+        <footer class="post__footer">
+          <p class="post__stats">
+            <span class="post__stat">
+              <span class="post__stat-icon" aria-hidden="true">♥</span>
+              <span data-like-count="{{ post.id }}">{{ post.likes_count }}</span>
+              <span class="sr-only">reacciones</span>
+            </span>
+            <span class="post__stat">{{ post.comments_count }} comentario{{ '' if post.comments_count == 1 else 's' }}</span>
+          </p>
+          <div class="post__actions">
+            <form class="post__like" method="post" action="{{ url_for('news.like', post_id=post.id) }}"
+                  data-like-form data-post-id="{{ post.id }}">
+              {{ csrf_field() }}
+              <button class="post__action {{ 'is-active' if liked }}" type="submit"
+                      aria-pressed="{{ 'true' if liked else 'false' }}" data-like-button>
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+                  <path d="M12 20s-7-4.35-7-9.5A3.9 3.9 0 0 1 12 7a3.9 3.9 0 0 1 7 3.5C19 15.65 12 20 12 20Z"
+                        fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                </svg>
+                <span data-like-label>{{ 'Te gusta' if liked else 'Me gusta' }}</span>
+              </button>
+            </form>
+            <a class="post__action" href="#comentarios">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+                <path d="M20 12a7 7 0 0 1-7 7H8l-4 3v-4.2A7 7 0 0 1 6 6.3 7 7 0 0 1 20 12Z"
+                      fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+              </svg>
+              Comentar
+            </a>
+            <button class="post__action" type="button" data-share
+                    data-share-url="{{ url_for('news.detail', post_id=post.id, _external=True) }}"
+                    data-share-title="{{ post.title }}">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+                <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 16V4m0 0 4 4m-4-4L8 8"
+                      fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Compartir
+            </button>
+            {% if is_staff_view %}
+              <a class="post__action" href="{{ url_for('news_admin.post_edit', post_id=post.id) }}">Editar en el panel</a>
+            {% endif %}
+          </div>
+        </footer>
+      </article>
+      <aside class="news-aside" aria-label="Información complementaria">
+        <div class="card news-aside__card news-aside__card--brand">
+          <img class="news-aside__logo" src="{{ url_for('static', filename=config.INSTITUTION_LOGO) }}"
+               alt="Logotipo de {{ institution.nombre_colegio }}">
+          <h2>{{ institution.nombre_portal or 'Nueva Canaán Noticias' }}</h2>
+          <p class="small muted">{{ institution.portal_lema or 'Noticias, actividades y logros de nuestra comunidad educativa' }}</p>
+          <p class="small mb-0">{{ institution.nombre_colegio }}</p>
+        </div>
+
+        <div class="card news-aside__card">
+          <h3>Más de {{ post.category_label }}</h3>
+          {% if related %}
+            <ul class="news-aside__links">
+              {% for item in related %}
+                <li>
+                  <a href="{{ url_for('news.detail', post_id=item.id) }}">{{ item.title }}</a>
+                  <span class="small muted">{{ item.published_at|newsdate if item.published_at else '' }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="small muted mb-0">Todavía no hay otras publicaciones en esta categoría.</p>
+          {% endif %}
+        </div>
+
+        <div class="card news-aside__card">
+          <h3>Volver al muro</h3>
+          <a class="btn btn--ghost btn--sm btn--block" href="{{ url_for('news.index') }}">Todas las noticias</a>
+        </div>
+      </aside>
+    </div>
+
+    <section class="news-comments" id="comentarios" aria-labelledby="comentarios-titulo">
+      <div class="section__head">
+        <div>
+          <h2 id="comentarios-titulo">Comentarios de la comunidad</h2>
+          <p>Los comentarios son públicos y se moderan desde el panel administrativo.</p>
+        </div>
+      </div>
+      {% if comments %}
+        <ul class="thread news-thread">
+          {% for comment in comments %}
+            <li class="thread__item">
+              <div class="thread__head">
+                <span class="row">
+                  <span class="avatar" aria-hidden="true">{{ comment.author_name|initials }}</span>
+                  <strong>{{ comment.author_name }}</strong>
+                </span>
+                <span>{{ comment.created_at|newsdate }}</span>
+              </div>
+              <div class="news-comment__body">{{ comment.body|nl2br }}</div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="card empty-state">
+          <h3>Sea el primero en comentar</h3>
+          <p class="mb-0">Los comentarios de la comunidad aparecerán en esta sección.</p>
+        </div>
+      {% endif %}
+
+      {% if post.allow_comments %}
+        <form class="card news-comment-form" method="post"
+              action="{{ url_for('news.comment', post_id=post.id) }}" novalidate>
+          <h3>Escriba su comentario</h3>
+          {{ csrf_field() }}
+          <div class="form-grid">
+            <div class="field field--full">
+              <label for="author_name">Su nombre <span aria-hidden="true">*</span></label>
+              <input type="text" id="author_name" name="author_name" maxlength="80" required
+                     value="{{ current_user.full_name if current_user.is_authenticated else '' }}"
+                     placeholder="Nombre y apellido">
+            </div>
+            <div class="field field--full">
+              <label for="body">Comentario <span aria-hidden="true">*</span></label>
+              <textarea id="body" name="body" rows="4" maxlength="1200" required
+                        data-counter="comment-counter"
+                        placeholder="Escriba su comentario respetando a la comunidad educativa."></textarea>
+              <span class="hint" id="comment-counter"></span>
+            </div>
+            <div class="field field--full honeypot" aria-hidden="true">
+              <label for="website">No completar este campo</label>
+              <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit">Publicar comentario</button>
+          </div>
+          <p class="small muted mb-0">
+            Su comentario se publica de inmediato y puede ser ocultado por la institución
+            si no respeta las normas de convivencia.
+          </p>
+        </form>
+      {% else %}
+        <div class="alert alert--info">
+          <span class="alert__icon" aria-hidden="true">i</span>
+          <span>Los comentarios están desactivados en esta publicación.</span>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/news.js') }}" defer></script>
+{% endblock %}
+

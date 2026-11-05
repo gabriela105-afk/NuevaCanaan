@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Noticias{% endblock %}
+{% block description %}{{ institution.nombre_portal or 'Nueva Canaán Noticias' }}: noticias, actos cívicos, deportes, campeonatos, convocatorias y comunicados de la comunidad educativa.{% endblock %}
+
+{% block content %}
+  <section class="news-hero">
+    <div class="container news-hero__inner">
+      <span class="news-hero__eyebrow">{{ institution.nombre_portal or 'Nueva Canaán Noticias' }}</span>
+      <h1>Noticias de nuestra comunidad educativa</h1>
+      <p>{{ institution.portal_lema or 'Noticias, actividades y logros de nuestra comunidad educativa' }}</p>
+      <form class="news-search" method="get" action="{{ url_for('news.index') }}" role="search">
+        <label class="sr-only" for="news-q">Buscar una noticia</label>
+        <input type="search" id="news-q" name="q" value="{{ search }}"
+               placeholder="Buscar por título o contenido">
+        {% if category %}<input type="hidden" name="categoria" value="{{ category }}">{% endif %}
+        <button class="btn btn--accent" type="submit">Buscar</button>
+      </form>
+    </div>
+  </section>
+
+  <div class="container news-layout">
+    <section class="news-feed" aria-label="Muro de noticias">
+      {% if current_user.is_authenticated and current_user.is_staff %}
+        <div class="post composer">
+          <div class="composer__row">
+            <span class="avatar avatar--lg" aria-hidden="true">{{ current_user.full_name|initials }}</span>
+            <div>
+              <p class="composer__title">Hola, {{ current_user.full_name.split(' ')[0] }}. ¿Qué noticia desea compartir?</p>
+              <p class="composer__hint">Publique actividades, actos cívicos, deportes o convocatorias con una fotografía.</p>
+            </div>
+          </div>
+          <div class="composer__actions">
+            <a class="btn btn--primary btn--sm" href="{{ url_for('news_admin.post_new') }}">Publicar noticia</a>
+            <a class="btn btn--ghost btn--sm" href="{{ url_for('news_admin.posts') }}">Administrar publicaciones</a>
+          </div>
+        </div>
+      {% endif %}
+
+      <nav class="news-chips" aria-label="Filtrar por categoría">
+        <a class="news-chip {{ 'is-active' if not category }}"
+           href="{{ url_for('news.index', q=search or None) }}">Todas las noticias</a>
+        {% for item in categories %}
+          <a class="news-chip {{ 'is-active' if category == item }}"
+             href="{{ url_for('news.index', categoria=item, q=search or None) }}">{{ NEWS_CATEGORY_LABELS.get(item, item) }}</a>
+        {% endfor %}
+      </nav>
+
+      {% if search %}
+        <div class="alert alert--info">
+          <span class="alert__icon" aria-hidden="true">i</span>
+          <span>
+            Resultados para <strong>“{{ search }}”</strong>: {{ total_posts }} noticia(s).
+            <a href="{{ url_for('news.index', categoria=category or None) }}">Limpiar búsqueda</a>
+          </span>
+        </div>
+      {% endif %}
+
+      {% if posts %}
+        {% for post in posts %}
+          {% include "news/_post_card.html" %}
+        {% endfor %}
+
+        {% set endpoint = 'news.index' %}
+        {% set extra = {'categoria': category, 'q': search} %}
+        {% include "partials/_pagination.html" with context %}
+      {% else %}
+        <div class="card empty-state">
+          <h3>Aún no hay noticias publicadas</h3>
+          <p class="mb-0">
+            {% if category or search %}
+              No encontramos publicaciones que coincidan con el filtro seleccionado.
+            {% else %}
+              Las noticias de la institución aparecerán aquí en cuanto el equipo de comunicación las publique.
+            {% endif %}
+          </p>
+          {% if current_user.is_authenticated and current_user.is_staff %}
+            <a class="btn btn--primary btn--sm" href="{{ url_for('news_admin.post_new') }}">Publicar la primera noticia</a>
+          {% endif %}
+        </div>
+      {% endif %}
+    </section>
+
+    <aside class="news-aside" aria-label="Información del portal">
+      <div class="card news-aside__card news-aside__card--brand">
+        <img class="news-aside__logo" src="{{ url_for('static', filename=config.INSTITUTION_LOGO) }}"
+             alt="Logotipo de {{ institution.nombre_colegio }}">
+        <h2>{{ institution.nombre_portal or 'Nueva Canaán Noticias' }}</h2>
+        <p class="small muted">{{ institution.portal_lema or 'Noticias, actividades y logros de nuestra comunidad educativa' }}</p>
+        <p class="small">{{ institution.nombre_colegio }}</p>
+      </div>
+
+      <div class="card news-aside__card">
+        <h3>Secciones</h3>
+        <ul class="news-aside__links">
+          <li><a href="{{ url_for('announcements.index') }}">Comunicados oficiales</a></li>
+          <li><a href="{{ url_for('main.calendario') }}">Calendario escolar</a></li>
+          <li><a href="{{ url_for('main.galeria') }}">Galería de actividades</a></li>
+          <li><a href="{{ url_for('main.institucion') }}">Sobre la institución</a></li>
+          <li><a href="{{ url_for('main.contacto') }}">Contacto</a></li>
+        </ul>
+      </div>
+
+      <div class="card news-aside__card">
+        <h3>Categorías</h3>
+        <ul class="news-aside__links">
+          {% for item in categories %}
+            <li>
+              <a href="{{ url_for('news.index', categoria=item) }}">{{ NEWS_CATEGORY_LABELS.get(item, item) }}</a>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </aside>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/news.js') }}" defer></script>
+{% endblock %}

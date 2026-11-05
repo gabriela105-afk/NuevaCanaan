@@ -197,6 +197,12 @@ class Config:
     # --- Paginación -----------------------------------------------------
     ITEMS_PER_PAGE = _env_int("ITEMS_PER_PAGE", 10)
 
+    # --- NUEVA CANAÁN NOTICIAS ------------------------------------------
+    NEWS_PER_PAGE = _env_int("NEWS_PER_PAGE", 6)
+    NEWS_COMMENTS_PER_PAGE = _env_int("NEWS_COMMENTS_PER_PAGE", 15)
+    # Desfase horario usado para mostrar las fechas del muro (Bolivia = -4).
+    UTC_OFFSET_HOURS = _env_int("UTC_OFFSET_HOURS", -4)
+
     # --- Correo (opcional, NO configurado por defecto) --------------------
     MAIL_ENABLED = _env_bool("MAIL_ENABLED", False)
 

@@ -24,6 +24,9 @@ from .models import (
     AUDIENCE_LABELS,
     ENROLLMENT_STATUS_LABELS,
     EVENT_CATEGORY_LABELS,
+    NEWS_CATEGORY_LABELS,
+    NEWS_COMMENT_STATUS_LABELS,
+    NEWS_STATUS_LABELS,
     PRIORITY_LABELS,
     ROLE_LABELS,
     Message,
@@ -35,7 +38,9 @@ from .utils import (
     format_date,
     format_datetime,
     format_long_date,
+    format_news_datetime,
     format_short_date,
+    format_time_ago,
     load_settings,
     pending_settings,
 )
@@ -121,16 +126,20 @@ def _register_blueprints(app: Flask) -> None:
     from .auth.routes import auth_bp
     from .main.routes import main_bp
     from .messages.routes import messages_bp
+    from .news.routes import news_bp
+    from .news_admin.routes import news_admin_bp
     from .parents.routes import parents_bp
     from .teachers.routes import teachers_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(announcements_bp)
+    app.register_blueprint(news_bp)
     app.register_blueprint(messages_bp)
     app.register_blueprint(parents_bp)
     app.register_blueprint(teachers_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(news_admin_bp)
 
 
 def _register_error_handlers(app: Flask) -> None:
@@ -176,6 +185,8 @@ def _register_template_helpers(app: Flask) -> None:
     app.jinja_env.filters["longdate"] = format_long_date
     app.jinja_env.filters["shortdate"] = format_short_date
     app.jinja_env.filters["filesize"] = format_bytes
+    app.jinja_env.filters["newsdate"] = format_news_datetime
+    app.jinja_env.filters["timeago"] = format_time_ago
 
     @app.template_filter("nl2br")
     def nl2br(value):
@@ -234,6 +245,9 @@ def _register_template_helpers(app: Flask) -> None:
             "ASSIGNMENT_KIND_LABELS": ASSIGNMENT_KIND_LABELS,
             "AUDIENCE_LABELS": AUDIENCE_LABELS,
             "ENROLLMENT_STATUS_LABELS": ENROLLMENT_STATUS_LABELS,
+            "NEWS_CATEGORY_LABELS": NEWS_CATEGORY_LABELS,
+            "NEWS_STATUS_LABELS": NEWS_STATUS_LABELS,
+            "NEWS_COMMENT_STATUS_LABELS": NEWS_COMMENT_STATUS_LABELS,
         }
 
 

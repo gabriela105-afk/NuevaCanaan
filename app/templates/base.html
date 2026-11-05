@@ -8,6 +8,7 @@
   <title>{% block title %}Inicio{% endblock %} · {{ institution.nombre_colegio }}</title>
   <link rel="icon" href="{{ url_for('static', filename=config.INSTITUTION_FAVICON) }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/news.css') }}">
   {% block head_extra %}{% endblock %}
 </head>
 <body>
@@ -50,6 +51,8 @@
            href="{{ url_for('main.institucion') }}">Institución</a>
         <a class="nav__link {{ 'is-active' if request.endpoint == 'announcements.index' }}"
            href="{{ url_for('announcements.index') }}">Comunicados</a>
+        <a class="nav__link {{ 'is-active' if request.endpoint in ('news.index', 'news.detail') }}"
+           href="{{ url_for('news.index') }}">Noticias</a>
         <a class="nav__link {{ 'is-active' if request.endpoint == 'main.calendario' }}"
            href="{{ url_for('main.calendario') }}">Calendario</a>
         <a class="nav__link {{ 'is-active' if request.endpoint == 'main.galeria' }}"
@@ -106,6 +109,7 @@
         <h4>Enlaces útiles</h4>
         <ul>
           <li><a href="{{ url_for('announcements.index') }}">Comunicados oficiales</a></li>
+          <li><a href="{{ url_for('news.index') }}">Nueva Canaán Noticias</a></li>
           <li><a href="{{ url_for('main.calendario') }}">Calendario escolar</a></li>
           <li><a href="{{ url_for('main.contacto') }}">Formulario de contacto</a></li>
           <li><a href="{{ url_for('auth.login') }}">Acceso a familias y docentes</a></li>

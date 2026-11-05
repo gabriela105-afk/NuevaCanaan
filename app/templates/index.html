@@ -121,6 +121,53 @@
     </div>
   </section>
 
+  <section class="section" aria-labelledby="noticias-titulo">
+    <div class="container">
+      <div class="section__head">
+        <div>
+          <h2 id="noticias-titulo">{{ institution.nombre_portal or 'Nueva Canaán Noticias' }}</h2>
+          <p>Actividades, actos cívicos, deportes y logros de nuestra comunidad educativa.</p>
+        </div>
+        <a class="btn btn--ghost btn--sm" href="{{ url_for('news.index') }}">Ver todo el muro</a>
+      </div>
+
+      {% if news_posts %}
+        <div class="news-teasers">
+          {% for post in news_posts %}
+            <article class="card news-teaser">
+              {% if post.cover_image and post.cover_image.is_available %}
+                <a class="news-teaser__media" href="{{ url_for('news.detail', post_id=post.id) }}">
+                  <img src="{{ url_for('news.image', image_id=post.cover_image.id) }}"
+                       alt="{{ post.cover_image.alt or post.title }}" loading="lazy">
+                </a>
+              {% endif %}
+              <div class="news-teaser__body">
+                <p class="news-teaser__meta">
+                  <span class="badge">{{ post.category_label }}</span>
+                  {% if post.is_pinned %}<span class="badge badge--gold">Destacada</span>{% endif %}
+                  <span class="small muted">{{ post.published_at|newsdate if post.published_at else '' }}</span>
+                </p>
+                <h3 class="card__title">
+                  <a href="{{ url_for('news.detail', post_id=post.id) }}">{{ post.title }}</a>
+                </h3>
+                <p class="news-teaser__excerpt">{{ post.excerpt }}</p>
+                <p class="small muted mb-0">
+                  {{ post.likes_count }} me gusta ·
+                  {{ post.comments_count }} comentario{{ '' if post.comments_count == 1 else 's' }}
+                </p>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="card empty-state">
+          <h3>Aún no hay noticias publicadas</h3>
+          <p class="mb-0">Las actividades y logros de la comunidad aparecerán en esta sección.</p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
   <section class="section">
     <div class="container grid grid--2">
       <div>

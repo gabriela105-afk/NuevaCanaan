@@ -194,6 +194,32 @@ CREATE TABLE messages (
 
 CREATE INDEX ix_messages_recipient_read ON messages (recipient_id, read_at);
 
+CREATE TABLE news_posts (
+	id SERIAL NOT NULL, 
+	title VARCHAR(180) NOT NULL, 
+	summary VARCHAR(300), 
+	body TEXT NOT NULL, 
+	category VARCHAR(30) NOT NULL, 
+	status VARCHAR(20) NOT NULL, 
+	is_pinned BOOLEAN NOT NULL, 
+	allow_comments BOOLEAN NOT NULL, 
+	published_at TIMESTAMP WITHOUT TIME ZONE, 
+	author_id INTEGER, 
+	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+	updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT ck_news_post_status CHECK (status IN ('draft','published','archived')), 
+	FOREIGN KEY(author_id) REFERENCES users (id) ON DELETE SET NULL
+);
+
+CREATE INDEX ix_news_posts_category ON news_posts (category);
+
+CREATE INDEX ix_news_posts_published_at ON news_posts (published_at);
+
+CREATE INDEX ix_news_posts_status ON news_posts (status);
+
+CREATE INDEX ix_news_posts_status_publication ON news_posts (status, published_at);
+
 CREATE TABLE notifications (
 	id SERIAL NOT NULL, 
 	user_id INTEGER NOT NULL, 
@@ -299,6 +325,60 @@ CREATE TABLE course_assignments (
 	FOREIGN KEY(teacher_id) REFERENCES teachers (id) ON DELETE CASCADE, 
 	FOREIGN KEY(course_id) REFERENCES courses (id) ON DELETE CASCADE
 );
+
+CREATE TABLE news_comments (
+	id SERIAL NOT NULL, 
+	post_id INTEGER NOT NULL, 
+	author_name VARCHAR(80) NOT NULL, 
+	body TEXT NOT NULL, 
+	status VARCHAR(20) NOT NULL, 
+	visitor_key VARCHAR(64), 
+	user_id INTEGER, 
+	ip_address VARCHAR(60), 
+	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT ck_news_comment_status CHECK (status IN ('approved','hidden')), 
+	FOREIGN KEY(post_id) REFERENCES news_posts (id) ON DELETE CASCADE, 
+	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE SET NULL
+);
+
+CREATE INDEX ix_news_comments_created_at ON news_comments (created_at);
+
+CREATE INDEX ix_news_comments_post_id ON news_comments (post_id);
+
+CREATE INDEX ix_news_comments_post_status ON news_comments (post_id, status);
+
+CREATE INDEX ix_news_comments_status ON news_comments (status);
+
+CREATE TABLE news_images (
+	id SERIAL NOT NULL, 
+	post_id INTEGER NOT NULL, 
+	path VARCHAR(255) NOT NULL, 
+	name VARCHAR(255), 
+	mime VARCHAR(120), 
+	size INTEGER, 
+	alt VARCHAR(180), 
+	position INTEGER NOT NULL, 
+	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(post_id) REFERENCES news_posts (id) ON DELETE CASCADE
+);
+
+CREATE INDEX ix_news_images_post_id ON news_images (post_id);
+
+CREATE TABLE news_reactions (
+	id SERIAL NOT NULL, 
+	post_id INTEGER NOT NULL, 
+	visitor_key VARCHAR(64) NOT NULL, 
+	user_id INTEGER, 
+	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT uq_news_reaction_visitor UNIQUE (post_id, visitor_key), 
+	FOREIGN KEY(post_id) REFERENCES news_posts (id) ON DELETE CASCADE, 
+	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE SET NULL
+);
+
+CREATE INDEX ix_news_reactions_post_id ON news_reactions (post_id);
 
 CREATE TABLE parent_students (
 	parent_id INTEGER NOT NULL, 

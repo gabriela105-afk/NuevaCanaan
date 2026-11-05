@@ -9,7 +9,10 @@
       <h1>Panel general</h1>
       <p>{{ current_user.full_name }} · {{ current_user.role_label }}</p>
     </div>
-    <a class="btn btn--primary btn--sm" href="{{ url_for('admin.announcement_new') }}">Nuevo comunicado</a>
+    <div class="actions">
+      <a class="btn btn--ghost btn--sm" href="{{ url_for('news_admin.posts') }}">Noticias del muro</a>
+      <a class="btn btn--primary btn--sm" href="{{ url_for('admin.announcement_new') }}">Nuevo comunicado</a>
+    </div>
   </div>
 
   {% if pending %}
@@ -32,6 +35,8 @@
     <div class="stat"><div class="stat__value">{{ stats.drafts }}</div><div class="stat__label">Borradores</div></div>
     <div class="stat"><div class="stat__value">{{ stats.upcoming_events }}</div><div class="stat__label">Eventos próximos</div></div>
     <div class="stat"><div class="stat__value">{{ stats.unread_contact }}</div><div class="stat__label">Consultas sin leer</div></div>
+    <div class="stat"><div class="stat__value">{{ stats.news_published }}</div><div class="stat__label">Noticias publicadas</div></div>
+    <div class="stat"><div class="stat__value">{{ stats.news_comments }}</div><div class="stat__label">Comentarios visibles</div></div>
   </div>
 
   <div class="grid grid--2 mt-2">

@@ -17,7 +17,7 @@ import sys
 import click
 
 from .extensions import db
-from .models import InstitutionSetting, User
+from .models import InstitutionSetting, NewsComment, NewsPost, User
 from .utils import SETTING_DEFAULTS
 
 DEMO_PASSWORD = "Demo12345"
@@ -322,6 +322,52 @@ def seed_demo_data(force: bool = False) -> bool:
     db.session.flush()
     db.session.add(
         AnnouncementRecipient(announcement_id=announcements[2].id, course_id=courses[0].id)
+    )
+    news_posts = [
+        NewsPost(
+            title="[DEMO] Acto cívico de inicio del año escolar",
+            summary="Publicación de ejemplo del muro NUEVA CANAÁN NOTICIAS.",
+            body=(
+                "Publicación de EJEMPLO del muro de noticias.\n\n"
+                "La comunidad educativa participó del acto cívico de inicio del año "
+                "escolar, con la presentación de los cursos y el saludo de la dirección."
+            ),
+            category="civico",
+            status="published",
+            is_pinned=True,
+            published_at=utcnow(),
+            author_id=direction_user.id,
+        ),
+        NewsPost(
+            title="[DEMO] Campeonato interescolar de fútbol",
+            summary="Los estudiantes representaron a la institución en el campeonato.",
+            body=(
+                "Noticia de EJEMPLO.\n\n"
+                "El equipo de secundaria participó del campeonato interescolar y obtuvo "
+                "el reconocimiento al juego limpio."
+            ),
+            category="campeonato",
+            status="published",
+            published_at=utcnow(),
+            author_id=direction_user.id,
+        ),
+        NewsPost(
+            title="[DEMO] Borrador de noticia sobre la feria cultural",
+            body="Borrador de EJEMPLO que no se muestra en el muro público.",
+            category="cultural",
+            status="draft",
+            author_id=direction_user.id,
+        ),
+    ]
+    db.session.add_all(news_posts)
+    db.session.flush()
+    db.session.add(
+        NewsComment(
+            post_id=news_posts[0].id,
+            author_name="Familia de demostración",
+            body="Comentario de EJEMPLO publicado en el muro de noticias.",
+            status="approved",
+        )
     )
     db.session.add_all(
         [
