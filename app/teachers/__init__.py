@@ -1,1 +1,0 @@
-"""Paquete del panel docente."""

@@ -1,53 +1,27 @@
-/* Interacciones mínimas de la plataforma (JavaScript sin dependencias). */
-(function () {
+/* Confirmaciones y contador de fotografías del muro. */
+(() => {
   "use strict";
 
-  document.addEventListener("DOMContentLoaded", function () {
-    // Menú móvil
-    var toggle = document.querySelector(".nav-toggle");
-    var nav = document.getElementById("main-nav");
-    if (toggle && nav) {
-      toggle.addEventListener("click", function () {
-        var open = nav.classList.toggle("is-open");
-        toggle.setAttribute("aria-expanded", open ? "true" : "false");
-      });
-    }
-
-    // Confirmación antes de acciones destructivas
-    document.querySelectorAll("[data-confirm]").forEach(function (element) {
-      var message = element.getAttribute("data-confirm");
-      var eventName = element.tagName === "FORM" ? "submit" : "click";
-      element.addEventListener(eventName, function (event) {
-        if (!window.confirm(message)) {
-          event.preventDefault();
-        }
-      });
-    });
-
-    // Contador de caracteres
-    document.querySelectorAll("[data-counter]").forEach(function (field) {
-      var target = document.getElementById(field.getAttribute("data-counter"));
-      if (!target) return;
-      var update = function () {
-        target.textContent = field.value.length + " caracteres";
-      };
-      field.addEventListener("input", update);
-      update();
-    });
-
-    // Campos condicionales (comunicados y eventos internos)
-    var audienceFields = document.querySelectorAll("[data-audience-select]");
-    audienceFields.forEach(function (select) {
-      var form = select.closest("form") || document;
-      var internalBlocks = form.querySelectorAll("[data-internal-only]");
-      var update = function () {
-        var isInternal = select.value === "internal";
-        internalBlocks.forEach(function (block) {
-          block.hidden = !isInternal;
-        });
-      };
-      select.addEventListener("change", update);
-      update();
+  document.querySelectorAll("form[data-confirm]").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+      if (!window.confirm(form.dataset.confirm)) {
+        event.preventDefault();
+      }
     });
   });
+
+  const photosInput = document.querySelector("#photos");
+  const fileCount = document.querySelector("#file-count");
+  if (photosInput && fileCount) {
+    photosInput.addEventListener("change", () => {
+      const count = photosInput.files ? photosInput.files.length : 0;
+      if (count === 0) {
+        fileCount.textContent = "Ninguna fotografía seleccionada";
+      } else if (count === 1) {
+        fileCount.textContent = "1 fotografía seleccionada";
+      } else {
+        fileCount.textContent = `${count} fotografías seleccionadas`;
+      }
+    });
+  }
 })();
