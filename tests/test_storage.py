@@ -10,7 +10,7 @@ from sqlalchemy import inspect, text
 
 from app import storage
 from app.extensions import db
-from app.models import PostImage
+from app.models import NewsImage
 from app.schema import ensure_schema
 
 PNG_BYTES = base64.b64decode(
@@ -210,7 +210,7 @@ def test_postgrest_invalid_path_error_explains_url_configuration(app, monkeypatc
 
 
 def test_publish_stores_supabase_metadata_and_image_redirects(
-    auth_client, app, monkeypatch
+    client, app, monkeypatch
 ):
     def fake_request(method, url, headers=None, data=None, timeout=None):
         return 200, b"{}"
@@ -220,31 +220,43 @@ def test_publish_stores_supabase_metadata_and_image_redirects(
     with app.app_context():
         app.config.update(SUPABASE_CONFIG)
 
-    response = auth_client.post(
-        "/publicar",
+    login_response = client.post(
+        "/login",
+        data={"email": "admin@test.local", "password": "ClaveSegura123"},
+    )
+    assert login_response.status_code == 302
+
+    response = client.post(
+        "/admin/noticias/nueva",
         data={
-            "body": "Noticia con fotografía permanente",
-            "photos": (io.BytesIO(PNG_BYTES), "portada.png"),
+            "title": "Noticia con fotografía permanente",
+            "summary": "Resumen de la noticia de prueba.",
+            "body": "Contenido de la noticia con una fotografía almacenada en Supabase.",
+            "category": "institucional",
+            "status": "published",
+            "allow_comments": "1",
+            "image": (io.BytesIO(PNG_BYTES), "portada.png"),
         },
         content_type="multipart/form-data",
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Publicación creada correctamente" in response.get_data(as_text=True)
+    assert "Noticia publicada en el muro." in response.get_data(as_text=True)
 
     with app.app_context():
-        image = PostImage.query.one()
+        image = NewsImage.query.one()
         assert image.storage == "supabase"
-        assert image.path.startswith("posts/portada-")
+        assert image.path.startswith("noticias/portada-")
         assert image.url.startswith(
             "https://proyecto.supabase.co/storage/v1/object/public/nueva-canaan/"
         )
         assert image.is_available is True
         image_id = image.id
+        expected_url = image.url
 
-    redirect_response = auth_client.get(f"/imagenes/{image_id}")
+    redirect_response = client.get(f"/noticias/foto/{image_id}")
     assert redirect_response.status_code == 302
-    assert redirect_response.headers["Location"] == image.url
+    assert redirect_response.headers["Location"] == expected_url
 
 
 def test_ensure_schema_adds_columns_without_deleting_existing_rows(app):

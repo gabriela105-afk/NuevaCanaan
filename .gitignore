@@ -70,6 +70,7 @@ logs/
 *.tmp
 *.bak
 *.orig
+/.restore/
 _*_out.txt
 _urls.txt
 _dbcheck.txt

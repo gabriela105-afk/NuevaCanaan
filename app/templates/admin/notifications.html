@@ -1,0 +1,91 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Enviar notificación{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Notificaciones internas</h1>
+      <p>Envíe un aviso dentro de la plataforma a un grupo de usuarios.</p>
+    </div>
+  </div>
+
+  <form class="card" method="post" novalidate>
+    {{ csrf_field() }}
+    <div class="form-grid">
+      <div class="field">
+        <label for="audience">Destinatarios</label>
+        <select id="audience" name="audience">
+          <option value="all" {% if form.audience == 'all' %}selected{% endif %}>Todos los usuarios activos</option>
+          <option value="role" {% if form.audience == 'role' %}selected{% endif %}>Un rol específico</option>
+          <option value="course" {% if form.audience == 'course' %}selected{% endif %}>Un curso (familias y docentes)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="role">Rol (si aplica)</label>
+        <select id="role" name="role">
+          <option value="">Seleccione un rol</option>
+          {% for item in roles %}
+            <option value="{{ item }}" {% if form.role == item %}selected{% endif %}>{{ ROLE_LABELS.get(item, item) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="course_id">Curso (si aplica)</label>
+        <select id="course_id" name="course_id">
+          <option value="">Seleccione un curso</option>
+          {% for course in courses %}
+            <option value="{{ course.id }}" {% if form.course_id|string == course.id|string %}selected{% endif %}>{{ course.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field field--full">
+        <label for="title">Título</label>
+        <input type="text" id="title" name="title" value="{{ form.title }}" required maxlength="180">
+      </div>
+      <div class="field field--full">
+        <label for="body">Mensaje</label>
+        <textarea id="body" name="body" rows="4" required maxlength="400" data-counter="body-counter">{{ form.body }}</textarea>
+        <span class="hint" id="body-counter"></span>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">Enviar notificación</button>
+    </div>
+    <p class="small muted mb-0">
+      Las notificaciones aparecen en el panel de cada usuario. No se envían por correo, SMS ni
+      WhatsApp porque esas integraciones no están configuradas.
+    </p>
+  </form>
+
+  <section class="mt-2">
+    <h2>Últimas notificaciones generadas</h2>
+    {% if recent %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th scope="col">Fecha</th><th scope="col">Destinatario</th><th scope="col">Título</th><th scope="col">Estado</th></tr>
+          </thead>
+          <tbody>
+            {% for notification in recent %}
+              <tr>
+                <td>{{ notification.created_at|datetime }}</td>
+                <td>{{ notification.user.full_name if notification.user else '—' }}</td>
+                <td>{{ notification.title|truncate(60) }}</td>
+                <td>
+                  <span class="badge {{ 'badge--muted' if notification.is_read else 'badge--warning' }}">
+                    {{ 'Leída' if notification.is_read else 'Sin leer' }}
+                  </span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="card empty-state"><p class="mb-0">Aún no se generaron notificaciones.</p></div>
+    {% endif %}
+  </section>
+{% endblock %}

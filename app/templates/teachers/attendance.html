@@ -1,0 +1,117 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Asistencia · {{ course.label }}{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_teachers.html" %}{% endblock %}
+
+{% block panel %}
+  <ul class="breadcrumb">
+    <li><a href="{{ url_for('teachers.courses') }}">Mis cursos</a></li>
+    <li><a href="{{ url_for('teachers.course_detail', course_id=course.id) }}">{{ course.label }}</a></li>
+    <li>Asistencia</li>
+  </ul>
+
+  <div class="page-head">
+    <div>
+      <h1>Registro de asistencia</h1>
+      <p>{{ course.label }} · {{ selected_date|longdate }}</p>
+    </div>
+  </div>
+
+  <form class="filters" method="get" action="{{ url_for('teachers.attendance', course_id=course.id) }}">
+    <div class="field">
+      <label for="fecha">Fecha a registrar</label>
+      <input type="date" id="fecha" name="fecha" value="{{ selected_date.isoformat() }}">
+    </div>
+    <button class="btn btn--ghost btn--sm" type="submit">Consultar fecha</button>
+  </form>
+
+  {% if students %}
+    <form class="card" method="post"
+          action="{{ url_for('teachers.attendance', course_id=course.id) }}">
+      {{ csrf_field() }}
+      <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+
+      <div class="table-wrap">
+        <table class="data">
+          <caption>Asistencia del {{ selected_date|longdate }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Estudiante</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Observación</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for student in students %}
+              {% set record = existing.get(student.id) %}
+              <tr>
+                <td>{{ student.full_name }}<br><span class="small muted">{{ student.code }}</span></td>
+                <td>
+                  <label class="sr-only" for="status_{{ student.id }}">Estado de {{ student.full_name }}</label>
+                  <select id="status_{{ student.id }}" name="status_{{ student.id }}">
+                    <option value="">Sin registrar</option>
+                    {% for status in statuses %}
+                      <option value="{{ status }}"
+                        {% if record and record.status == status %}selected{% endif %}>
+                        {{ ATTENDANCE_STATUS_LABELS.get(status, status) }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td>
+                  <label class="sr-only" for="notes_{{ student.id }}">Observación de {{ student.full_name }}</label>
+                  <input type="text" id="notes_{{ student.id }}" name="notes_{{ student.id }}"
+                         maxlength="200" value="{{ record.notes if record and record.notes else '' }}">
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn--primary" type="submit">Guardar asistencia</button>
+        <a class="btn btn--ghost" href="{{ url_for('teachers.course_detail', course_id=course.id) }}">Volver al curso</a>
+      </div>
+    </form>
+  {% else %}
+    <div class="card empty-state">
+      <p class="mb-0">No hay estudiantes inscritos en este curso.</p>
+    </div>
+  {% endif %}
+
+  <section class="mt-2">
+    <h2>Últimos registros del curso</h2>
+    {% if history %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th scope="col">Fecha</th><th scope="col">Estudiante</th><th scope="col">Estado</th><th scope="col">Observación</th></tr>
+          </thead>
+          <tbody>
+            {% for record in history %}
+              <tr>
+                <td>{{ record.date|date }}</td>
+                <td>{{ record.student.full_name if record.student else '—' }}</td>
+                <td>
+                  <span class="badge {{ 'badge--success' if record.status in ('presente','justificado') else ('badge--warning' if record.status == 'tarde' else 'badge--danger') }}">
+                    {{ record.status_label }}
+                  </span>
+                </td>
+                <td>{{ record.notes or '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="card empty-state"><p class="mb-0">Aún no hay registros de asistencia.</p></div>
+    {% endif %}
+  </section>
+
+  <div class="notice mt-2">
+    Las inasistencias registradas pueden ser consultadas por las familias del estudiante.
+    Registre sólo información verificada.
+  </div>
+{% endblock %}

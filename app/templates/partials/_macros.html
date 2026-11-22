@@ -1,0 +1,88 @@
+{# ------------------------------------------------------------------
+   Macros reutilizables para formularios y bloques repetidos.
+   Uso: {% from "partials/_macros.html" import input, select, textarea, csrf_field, head %}
+   ------------------------------------------------------------------ #}
+
+{% macro csrf_field() -%}
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{%- endmacro %}
+
+{% macro input(name, label, value='', type='text', required=False, hint='', placeholder='', maxlength=None, step=None) %}
+  <div class="field">
+    <label for="{{ name }}">{{ label }}{% if required %} <span aria-hidden="true">*</span>{% endif %}</label>
+    <input type="{{ type }}" id="{{ name }}" name="{{ name }}"
+           value="{{ value if value is not none else '' }}"
+           {% if required %}required{% endif %}
+           {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+           {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}
+           {% if step %}step="{{ step }}"{% endif %}>
+    {% if hint %}<span class="hint">{{ hint }}</span>{% endif %}
+  </div>
+{% endmacro %}
+
+{% macro select(name, label, options, selected='', required=False, hint='', blank=None, attrs='') %}
+  <div class="field">
+    <label for="{{ name }}">{{ label }}{% if required %} <span aria-hidden="true">*</span>{% endif %}</label>
+    <select id="{{ name }}" name="{{ name }}" {% if required %}required{% endif %} {{ attrs|safe }}>
+      {% if blank is not none %}<option value="">{{ blank }}</option>{% endif %}
+      {% for option_value, option_label in options %}
+        <option value="{{ option_value }}"
+          {% if option_value|string == selected|string %}selected{% endif %}>{{ option_label }}</option>
+      {% endfor %}
+    </select>
+    {% if hint %}<span class="hint">{{ hint }}</span>{% endif %}
+  </div>
+{% endmacro %}
+
+{% macro textarea(name, label, value='', rows=5, required=False, hint='', maxlength=None, counter=None) %}
+  <div class="field field--full">
+    <label for="{{ name }}">{{ label }}{% if required %} <span aria-hidden="true">*</span>{% endif %}</label>
+    <textarea id="{{ name }}" name="{{ name }}" rows="{{ rows }}"
+              {% if required %}required{% endif %}
+              {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}
+              {% if counter %}data-counter="{{ counter }}"{% endif %}>{{ value if value is not none else '' }}</textarea>
+    {% if counter %}<span class="hint" id="{{ counter }}"></span>{% endif %}
+    {% if hint %}<span class="hint">{{ hint }}</span>{% endif %}
+  </div>
+{% endmacro %}
+
+{% macro page_head(title, subtitle='', breadcrumb=None) %}
+  <div class="page-head">
+    <div>
+      {% if breadcrumb %}
+        <ul class="breadcrumb">
+          {% for label, href in breadcrumb %}
+            <li>{% if href %}<a href="{{ href }}">{{ label }}</a>{% else %}{{ label }}{% endif %}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      <h1>{{ title }}</h1>
+      {% if subtitle %}<p>{{ subtitle }}</p>{% endif %}
+    </div>
+    {% if caller is defined %}{{ caller() }}{% endif %}
+  </div>
+{% endmacro %}
+
+{% macro empty_state(title, text, action_url=None, action_label=None) %}
+  <div class="card empty-state">
+    <h3>{{ title }}</h3>
+    <p class="{{ 'mb-0' if not action_url }}">{{ text }}</p>
+    {% if action_url %}
+      <a class="btn btn--primary btn--sm" href="{{ action_url }}">{{ action_label or 'Continuar' }}</a>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{% macro priority_badge(priority, label) %}
+  <span class="badge badge--{{ priority }}">{{ label }}</span>
+{% endmacro %}
+
+{% macro status_badge(announcement) %}
+  {% if announcement.status == 'published' %}
+    <span class="badge badge--success">Publicado</span>
+  {% elif announcement.status == 'draft' %}
+    <span class="badge badge--warning">Borrador</span>
+  {% else %}
+    <span class="badge badge--muted">Archivado</span>
+  {% endif %}
+{% endmacro %}

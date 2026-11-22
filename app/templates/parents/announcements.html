@@ -1,0 +1,62 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Comunicados{% endblock %}
+
+{% block sidebar %}{% include "partials/_sidebar_parents.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Comunicados</h1>
+      <p>Historial de avisos institucionales visibles para su cuenta.</p>
+    </div>
+  </div>
+
+  {% if announcements %}
+    <div class="stack">
+      {% for announcement in announcements %}
+        <article class="card {{ 'card--pinned' if announcement.is_pinned }}">
+          <div class="card__meta">
+            {% if announcement.is_pinned %}<span class="badge badge--gold">Fijado</span>{% endif %}
+            <span class="badge badge--{{ announcement.priority }}">{{ announcement.priority_label }}</span>
+            <span class="badge">{{ announcement.category_label }}</span>
+            {% if announcement.audience == 'internal' %}
+              <span class="badge badge--warning">Interno</span>
+            {% endif %}
+            <span>{{ announcement.published_at|longdate }}</span>
+          </div>
+          <h2 class="card__title">
+            <a href="{{ url_for('announcements.detail', announcement_id=announcement.id) }}">{{ announcement.title }}</a>
+          </h2>
+          <p class="card__body">{{ announcement.summary or announcement.body|truncate(200) }}</p>
+          {% if announcement.course_labels %}
+            <p class="small muted">Cursos: {{ announcement.course_labels|join(', ') }}</p>
+          {% endif %}
+          <a class="btn btn--ghost btn--sm"
+             href="{{ url_for('announcements.detail', announcement_id=announcement.id) }}">Leer comunicado</a>
+        </article>
+      {% endfor %}
+    </div>
+
+    {% if page > 1 or announcements|length == per_page %}
+      <nav class="pagination" aria-label="Paginación de comunicados">
+        {% if page > 1 %}
+          <a href="{{ url_for('parents.announcements', page=page-1) }}" rel="prev">‹ Anterior</a>
+        {% else %}
+          <span class="is-disabled">‹ Anterior</span>
+        {% endif %}
+        <span class="is-current">Página {{ page }}</span>
+        {% if announcements|length == per_page %}
+          <a href="{{ url_for('parents.announcements', page=page+1) }}" rel="next">Siguiente ›</a>
+        {% else %}
+          <span class="is-disabled">Siguiente ›</span>
+        {% endif %}
+      </nav>
+      <p class="small muted text-center">{{ total }} comunicado(s) disponibles.</p>
+    {% endif %}
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin comunicados</h3>
+      <p class="mb-0">No hay comunicados vigentes dirigidos a su cuenta.</p>
+    </div>
+  {% endif %}
+{% endblock %}

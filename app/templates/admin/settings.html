@@ -1,0 +1,71 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Configuración institucional{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Configuración institucional</h1>
+      <p>Estos textos se muestran en el sitio público y en el pie de página.</p>
+    </div>
+  </div>
+
+  {% if pending %}
+    <div class="alert alert--warning">
+      <span class="alert__icon" aria-hidden="true">⚠</span>
+      <span>
+        Aún faltan datos obligatorios: <strong>{{ pending|join(', ') }}</strong>.
+      </span>
+    </div>
+  {% else %}
+    <div class="alert alert--success">
+      <span class="alert__icon" aria-hidden="true">✓</span>
+      <span>Los datos de contacto obligatorios están completos.</span>
+    </div>
+  {% endif %}
+
+  <form class="card" method="post" novalidate>
+    {{ csrf_field() }}
+    {% set multiline = ['mensaje_bienvenida', 'presentacion', 'mision', 'vision', 'historia', 'valores', 'nota_privacidad'] %}
+    <div class="form-grid">
+      {% for key, label in labels.items() %}
+        {% if key in multiline %}
+          <div class="field field--full">
+            <label for="{{ key }}">{{ label }}</label>
+            <textarea id="{{ key }}" name="{{ key }}" rows="4" maxlength="4000">{{ values.get(key, '') }}</textarea>
+          </div>
+        {% else %}
+          <div class="field">
+            <label for="{{ key }}">{{ label }}</label>
+            <input type="text" id="{{ key }}" name="{{ key }}" value="{{ values.get(key, '') }}" maxlength="300">
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">Guardar configuración</button>
+      <a class="btn btn--ghost" href="{{ url_for('main.index') }}" target="_blank" rel="noopener">Ver sitio público</a>
+    </div>
+  </form>
+
+  <div class="card mt-2">
+    <h2 class="card__title">Imágenes institucionales</h2>
+    <p class="small">
+      El logotipo y la fotografía principal se reemplazan en el servidor, dentro de
+      <code>app/static/img/</code>. También pueden configurarse con las variables de entorno
+      <code>INSTITUTION_LOGO</code> e <code>INSTITUTION_COVER</code>.
+    </p>
+    <p class="small muted mb-0">
+      Las fotografías adicionales se administran desde la sección
+      <a href="{{ url_for('admin.gallery') }}">Galería</a>.
+    </p>
+  </div>
+
+  <div class="notice mt-2">
+    <strong>Importante:</strong> no publique datos de contacto, autoridades o textos
+    institucionales que no hayan sido confirmados oficialmente por la dirección del colegio.
+  </div>
+{% endblock %}

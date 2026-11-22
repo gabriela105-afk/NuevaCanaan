@@ -1,0 +1,95 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Observaciones{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Observaciones pedagógicas</h1>
+      <p>Comentarios del trimestre que las familias pueden consultar.</p>
+    </div>
+  </div>
+
+  <form class="filters" method="get" action="{{ url_for('academic.observations') }}">
+    <div class="field">
+      <label for="anio">Año escolar</label>
+      <select id="anio" name="anio">
+        {% for value, label in years %}
+          <option value="{{ value }}" {% if year and year.id == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="trimestre">Trimestre</label>
+      <select id="trimestre" name="trimestre">
+        {% for value, label in trimesters %}
+          <option value="{{ value }}" {% if trimester and trimester.id == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="curso">Curso</label>
+      <select id="curso" name="curso">
+        <option value="">Seleccione un curso</option>
+        {% for value, label in courses %}
+          <option value="{{ value }}" {% if course and course.id == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn--primary btn--sm" type="submit">Abrir</button>
+  </form>
+
+  {% if trimester and trimester.is_closed %}
+    <div class="alert alert--info">
+      El trimestre está cerrado; las observaciones no pueden modificarse.
+    </div>
+  {% endif %}
+
+  {% if course and trimester %}
+    {% if students %}
+      <form method="post"
+            action="{{ url_for('academic.observations', anio=year.id if year else None, trimestre=trimester.id, curso=course.id) }}">
+        {{ csrf_field() }}
+        <input type="hidden" name="course_id" value="{{ course.id }}">
+        <div class="card">
+          <h2 class="card__title">{{ course.label }} · {{ trimester.full_label }}</h2>
+          <p class="small muted">
+            Escriba una observación por estudiante. Dejar el campo vacío elimina
+            la observación existente.
+          </p>
+          {% for student in students %}
+            {% set row = rows.get(student.id) %}
+            <fieldset class="field">
+              <legend>{{ student.full_name }}</legend>
+              <textarea name="body_{{ student.id }}" rows="3" maxlength="2000"
+                        aria-label="Observación de {{ student.full_name }}"
+                        placeholder="Observación pedagógica del trimestre">{{ row.body if row else '' }}</textarea>
+              <label class="checkbox">
+                <input type="checkbox" name="visible_{{ student.id }}" value="1"
+                       {% if not row or row.is_visible_to_parents %}checked{% endif %}>
+                Visible para la familia
+              </label>
+            </fieldset>
+          {% endfor %}
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit"
+                    {% if trimester.is_closed %}disabled{% endif %}>
+              Guardar observaciones
+            </button>
+          </div>
+        </div>
+      </form>
+    {% else %}
+      <div class="card empty-state">
+        <p class="mb-0">El curso no tiene estudiantes activos inscritos.</p>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="card empty-state">
+      <h3>Seleccione un curso</h3>
+      <p class="mb-0">Elija el trimestre y el curso para registrar observaciones.</p>
+    </div>
+  {% endif %}
+{% endblock %}

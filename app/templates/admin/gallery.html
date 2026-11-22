@@ -1,0 +1,149 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Galería{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Galería institucional</h1>
+      <p>Las imágenes se publican en la página abierta del colegio.</p>
+    </div>
+  </div>
+
+  <form class="card" method="post" enctype="multipart/form-data">
+    {{ csrf_field() }}
+    <h2 class="card__title">Subir imagen</h2>
+    <div class="form-grid">
+      <div class="field">
+        <label for="image">Archivo de imagen</label>
+        <input type="file" id="image" name="image" accept=".png,.jpg,.jpeg,.webp" required>
+        <span class="hint">
+          Formatos: PNG, JPG o WEBP. Máximo {{ config.MAX_ATTACHMENT_MB }} MB.
+          Optimice las imágenes para conexiones lentas.
+        </span>
+      </div>
+      <div class="field">
+        <label for="caption">Descripción</label>
+        <input type="text" id="caption" name="caption" maxlength="300"
+               placeholder="Ej.: Acto cívico por el Día de la Bandera">
+      </div>
+      <div class="field">
+        <label for="category">Categoría</label>
+        <select id="category" name="category">
+          {% for value, label in categories.items() %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="event_name">Actividad o evento</label>
+        <input type="text" id="event_name" name="event_name" maxlength="160">
+      </div>
+      <div class="field">
+        <label for="taken_on">Fecha de la fotografía</label>
+        <input type="date" id="taken_on" name="taken_on">
+      </div>
+    </div>
+    <div class="field">
+      <label class="checkbox">
+        <input type="checkbox" name="parental_consent" value="1">
+        Cuento con la autorización de uso de imagen de las personas que aparecen.
+      </label>
+      <label class="checkbox">
+        <input type="checkbox" name="is_public" value="1" checked>
+        Publicar en la galería abierta del sitio.
+      </label>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">Subir imagen</button>
+    </div>
+    <p class="small muted mb-0">
+      Publique únicamente fotografías con autorización institucional. No suba imágenes que
+      permitan identificar a estudiantes sin consentimiento.
+    </p>
+  </form>
+
+  <section class="mt-2">
+    <h2>Imágenes publicadas ({{ gallery|length }})</h2>
+    {% if gallery %}
+      <div class="gallery-grid">
+        {% for image in gallery %}
+          <figure class="gallery-item">
+            <img src="{{ image.url }}" alt="{{ image.name }}" loading="lazy">
+            <figcaption>
+              {{ image.name }}
+              {% if current_user.role == 'admin' and image.id %}
+                <form method="post" action="{{ url_for('admin.gallery_delete') }}"
+                      data-confirm="¿Eliminar la imagen «{{ image.name }}» de la galería?">
+                  {{ csrf_field() }}
+                  <input type="hidden" name="media_id" value="{{ image.id }}">
+                  <button class="btn btn--danger btn--sm" type="submit">Eliminar</button>
+                </form>
+              {% elif current_user.role == 'admin' and image.legacy %}
+                <form method="post" action="{{ url_for('admin.gallery_delete') }}"
+                      data-confirm="¿Eliminar la imagen «{{ image.name }}» de la galería?">
+                  {{ csrf_field() }}
+                  <input type="hidden" name="filename" value="{{ image.url.split('/')[-1] }}">
+                  <button class="btn btn--danger btn--sm" type="submit">Eliminar</button>
+                </form>
+              {% endif %}
+            </figcaption>
+          </figure>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="gallery-empty">
+        <p class="mb-0">Aún no hay imágenes en la galería institucional.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="mt-2">
+    <h2>Todas las fotografías ({{ media_files|length }})</h2>
+    <p class="small muted">
+      Las fotografías privadas o sin autorización confirmada no se publican en el sitio.
+    </p>
+    {% if media_files %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Imagen</th>
+              <th>Categoría</th>
+              <th>Publicación</th>
+              <th>Autorización</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for media in media_files %}
+              <tr>
+                <td>
+                  <strong>{{ media.caption or media.name or 'Fotografía' }}</strong><br>
+                  <span class="small muted">{{ media.created_at|datetime }}</span>
+                </td>
+                <td>{{ media.category_label }}</td>
+                <td>{{ 'Publicada' if media.can_publish else 'No publicada' }}</td>
+                <td>{{ 'Confirmada' if media.parental_consent else 'Pendiente' }}</td>
+                <td>
+                  {% if current_user.role == 'admin' %}
+                    <form method="post" action="{{ url_for('admin.gallery_delete') }}"
+                          data-confirm="¿Eliminar esta fotografía definitivamente?">
+                      {{ csrf_field() }}
+                      <input type="hidden" name="media_id" value="{{ media.id }}">
+                      <button class="btn btn--danger btn--sm" type="submit">Eliminar</button>
+                    </form>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">No hay fotografías cargadas en el almacenamiento.</p>
+    {% endif %}
+  </section>
+{% endblock %}

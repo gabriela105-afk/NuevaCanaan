@@ -1,0 +1,101 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Materias{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Materias</h1>
+      <p>Áreas curriculares que se imparten en el colegio.</p>
+    </div>
+  </div>
+
+  <form class="card" method="post">
+    {{ csrf_field() }}
+    <h2 class="card__title">Nueva materia</h2>
+    <div class="form-grid">
+      <div class="field">
+        <label for="name">Nombre <span aria-hidden="true">*</span></label>
+        <input type="text" id="name" name="name" maxlength="100" required
+               placeholder="Ej.: Matemática">
+      </div>
+      <div class="field">
+        <label for="code">Código</label>
+        <input type="text" id="code" name="code" maxlength="20" placeholder="MAT">
+      </div>
+      <div class="field">
+        <label for="area">Área curricular</label>
+        <input type="text" id="area" name="area" maxlength="60"
+               placeholder="Científica, Humanística…">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">Registrar materia</button>
+    </div>
+  </form>
+
+  {% if subjects %}
+    <div class="table-wrap">
+      <table class="data">
+        <caption>{{ subjects|length }} materia(s)</caption>
+        <thead>
+          <tr>
+            <th>Materia</th>
+            <th>Código</th>
+            <th>Área</th>
+            <th>Cursos</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for subject in subjects %}
+            <tr>
+              <td>
+                <form id="subject_{{ subject.id }}" method="post"
+                      action="{{ url_for('academic.subject_edit', subject_id=subject.id) }}">
+                  {{ csrf_field() }}
+                  <input type="text" name="name" value="{{ subject.name }}" maxlength="100" required
+                         aria-label="Nombre de la materia">
+                </form>
+              </td>
+              <td><input form="subject_{{ subject.id }}" type="text" name="code"
+                         value="{{ subject.code or '' }}" maxlength="20" aria-label="Código"></td>
+              <td><input form="subject_{{ subject.id }}" type="text" name="area"
+                         value="{{ subject.area or '' }}" maxlength="60" aria-label="Área"></td>
+              <td>{{ usage.get(subject.id, 0) }}</td>
+              <td>
+                <label class="checkbox">
+                  <input form="subject_{{ subject.id }}" type="checkbox" name="is_active" value="1"
+                         {% if subject.is_active %}checked{% endif %}>
+                  Activa
+                </label>
+              </td>
+              <td>
+                <div class="actions">
+                  <button form="subject_{{ subject.id }}" class="btn btn--primary btn--sm" type="submit">
+                    Guardar
+                  </button>
+                  {% if current_user.role == 'admin' %}
+                    <form method="post" action="{{ url_for('academic.subject_delete', subject_id=subject.id) }}"
+                          data-confirm="¿Eliminar la materia {{ subject.name }}?">
+                      {{ csrf_field() }}
+                      <button class="btn btn--danger btn--sm" type="submit">Eliminar</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin materias</h3>
+      <p class="mb-0">Registre las materias del plan de estudios.</p>
+    </div>
+  {% endif %}
+{% endblock %}

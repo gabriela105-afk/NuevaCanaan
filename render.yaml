@@ -39,8 +39,10 @@ services:
         generateValue: true
       - key: SESSION_COOKIE_SECURE
         value: "true"
-      # Cadena de conexión de Supabase (opcional). Si no se define, se usa SQLite
-      # local en instance/nueva_canaan.db (efímero en el plan gratuito).
+      # Cadena de conexión de Supabase. Es NECESARIA para que las publicaciones
+      # persistan: sin ella se usa SQLite en el disco efímero y se pierden al
+      # redesplegar. Copiar en Supabase → Connect → Transaction pooler (6543):
+      #   postgresql://postgres.kznbowtnjankvyqsntfu:CONTRASEÑA@aws-1-us-east-2.pooler.supabase.com:6543/postgres
       - key: DATABASE_URL
         sync: false
       - key: ADMIN_EMAIL
@@ -62,6 +64,8 @@ services:
         value: supabase
       - key: SUPABASE_STORAGE_PUBLIC
         value: "false"
+      # - key: UPLOAD_FOLDER
+      #   value: /var/data/uploads
     # --- Sólo con plan de pago (disco persistente para fotografías) ---
     # disk:
     #   name: nueva-canaan-data

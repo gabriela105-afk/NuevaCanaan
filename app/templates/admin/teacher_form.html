@@ -1,0 +1,126 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}{{ 'Editar docente' if teacher else 'Nuevo docente' }}{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <ul class="breadcrumb">
+    <li><a href="{{ url_for('admin.teachers') }}">Docentes</a></li>
+    <li>{{ teacher.user.full_name if teacher else 'Nuevo docente' }}</li>
+  </ul>
+
+  <div class="page-head">
+    <div>
+      <h1>{{ 'Editar docente' if teacher else 'Registrar docente' }}</h1>
+      <p>Los docentes acceden únicamente a los cursos que se les asignen.</p>
+    </div>
+  </div>
+
+  <form class="card" method="post" novalidate>
+    {{ csrf_field() }}
+    <div class="form-grid">
+      <div class="field field--full">
+        <label for="full_name">Nombre completo <span aria-hidden="true">*</span></label>
+        <input type="text" id="full_name" name="full_name" value="{{ form.full_name }}" required maxlength="160">
+      </div>
+      <div class="field">
+        <label for="email">Correo electrónico <span aria-hidden="true">*</span></label>
+        <input type="email" id="email" name="email" value="{{ form.email }}" required maxlength="180">
+      </div>
+      <div class="field">
+        <label for="phone">Teléfono</label>
+        <input type="tel" id="phone" name="phone" value="{{ form.phone }}" maxlength="40">
+      </div>
+      <div class="field">
+        <label for="employee_code">Código de empleado</label>
+        <input type="text" id="employee_code" name="employee_code" value="{{ form.employee_code }}" maxlength="30">
+      </div>
+      <div class="field">
+        <label for="specialty">Especialidad</label>
+        <input type="text" id="specialty" name="specialty" value="{{ form.specialty }}" maxlength="120">
+      </div>
+      <div class="field">
+        <label for="hire_date">Fecha de ingreso</label>
+        <input type="date" id="hire_date" name="hire_date" value="{{ form.hire_date }}">
+      </div>
+      {% if not teacher %}
+        <div class="field">
+          <label for="password">Contraseña inicial <span aria-hidden="true">*</span></label>
+          <input type="password" id="password" name="password" required
+                 minlength="{{ config.PASSWORD_MIN_LENGTH }}" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label for="confirm_password">Confirmar contraseña <span aria-hidden="true">*</span></label>
+          <input type="password" id="confirm_password" name="confirm_password" required
+                 minlength="{{ config.PASSWORD_MIN_LENGTH }}" autocomplete="new-password">
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">
+        {{ 'Guardar cambios' if teacher else 'Registrar docente' }}
+      </button>
+      <a class="btn btn--ghost" href="{{ url_for('admin.teachers') }}">Cancelar</a>
+    </div>
+  </form>
+
+  {% if teacher %}
+    <div class="grid grid--2 mt-2">
+      <div class="card">
+        <h2 class="card__title">Cursos y materias asignadas</h2>
+        {% if assignments %}
+          <div class="table-wrap">
+            <table class="data">
+              <thead>
+                <tr><th scope="col">Curso</th><th scope="col">Materia</th><th scope="col">Acción</th></tr>
+              </thead>
+              <tbody>
+                {% for assignment in assignments %}
+                  <tr>
+                    <td>{{ assignment.course.label if assignment.course else '—' }}</td>
+                    <td>{{ assignment.subject }}</td>
+                    <td>
+                      <form method="post"
+                            action="{{ url_for('admin.teacher_unassign', teacher_id=teacher.id, assignment_id=assignment.id) }}"
+                            data-confirm="¿Eliminar la asignación {{ assignment.course.label if assignment.course else '' }} · {{ assignment.subject }}?">
+                        {{ csrf_field() }}
+                        <button class="btn btn--danger btn--sm" type="submit">Eliminar</button>
+                      </form>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="small muted mb-0">El docente no tiene cursos asignados.</p>
+        {% endif %}
+      </div>
+
+      <form class="card" method="post" action="{{ url_for('admin.teacher_assign', teacher_id=teacher.id) }}">
+        {{ csrf_field() }}
+        <h2 class="card__title">Asignar curso</h2>
+        <div class="field">
+          <label for="course_id">Curso</label>
+          <select id="course_id" name="course_id" required>
+            <option value="">Seleccione un curso</option>
+            {% for item in courses %}
+              <option value="{{ item.id }}">{{ item.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="subject">Materia</label>
+          <input type="text" id="subject" name="subject" required maxlength="80"
+                 placeholder="Ej.: Matemática">
+        </div>
+        <div class="form-actions">
+          <button class="btn btn--primary btn--sm" type="submit">Asignar curso</button>
+        </div>
+      </form>
+    </div>
+  {% endif %}
+{% endblock %}
+

@@ -1,0 +1,94 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Usuarios{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Usuarios y roles</h1>
+      <p>Cuentas con acceso a la plataforma. Sólo el administrador puede crearlas o desactivarlas.</p>
+    </div>
+    <a class="btn btn--primary btn--sm" href="{{ url_for('admin.user_new') }}">Nuevo usuario</a>
+  </div>
+
+  <form class="filters" method="get" action="{{ url_for('admin.users') }}">
+    <div class="field">
+      <label for="q">Buscar</label>
+      <input type="search" id="q" name="q" value="{{ search }}" placeholder="Nombre o correo">
+    </div>
+    <div class="field">
+      <label for="rol">Rol</label>
+      <select id="rol" name="rol">
+        <option value="">Todos los roles</option>
+        {% for item in roles %}
+          <option value="{{ item }}" {% if item == role %}selected{% endif %}>{{ ROLE_LABELS.get(item, item) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.users') }}">Limpiar</a>
+  </form>
+
+  {% if users %}
+    <div class="table-wrap">
+      <table class="data">
+        <caption>{{ pagination.total }} usuario(s) registrados</caption>
+        <thead>
+          <tr>
+            <th scope="col">Nombre</th>
+            <th scope="col">Correo</th>
+            <th scope="col">Rol</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Último ingreso</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in users %}
+            <tr>
+              <td>{{ user.full_name }}{% if user.id == current_user.id %} <span class="badge badge--gold">Usted</span>{% endif %}</td>
+              <td>{{ user.email }}</td>
+              <td><span class="badge">{{ user.role_label }}</span></td>
+              <td>
+                <span class="badge {{ 'badge--success' if user.is_active else 'badge--muted' }}">
+                  {{ 'Activo' if user.is_active else 'Inactivo' }}
+                </span>
+                {% if user.is_locked %}<span class="badge badge--danger">Bloqueado</span>{% endif %}
+              </td>
+              <td>{{ user.last_login_at|datetime if user.last_login_at else 'Nunca' }}</td>
+              <td>
+                <div class="actions">
+                  <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.user_edit', user_id=user.id) }}">Editar</a>
+                  {% if user.id != current_user.id %}
+                    <form method="post" action="{{ url_for('admin.user_toggle', user_id=user.id) }}"
+                          data-confirm="¿{{ 'Activar' if not user.is_active else 'Desactivar' }} la cuenta de {{ user.full_name }}?">
+                      {{ csrf_field() }}
+                      <button class="btn btn--sm {{ 'btn--ghost' if not user.is_active else 'btn--danger' }}" type="submit">
+                        {{ 'Activar' if not user.is_active else 'Desactivar' }}
+                      </button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% set endpoint = 'admin.users' %}
+    {% set extra = {'rol': role, 'q': search} %}
+    {% include "partials/_pagination.html" with context %}
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin usuarios</h3>
+      <p class="mb-0">Cree la primera cuenta institucional.</p>
+    </div>
+  {% endif %}
+
+  <div class="notice mt-2">
+    Las contraseñas se almacenan cifradas. Al desactivar una cuenta el usuario pierde el
+    acceso inmediatamente, pero su historial se conserva.
+  </div>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Historial de notas{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Historial de cambios de notas</h1>
+      <p>Registro de cada alta, modificación o eliminación de calificaciones.</p>
+    </div>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('academic.grades') }}">Volver a notas</a>
+  </div>
+
+  <form class="filters" method="get" action="{{ url_for('academic.history') }}">
+    <div class="field">
+      <label for="anio">Año escolar</label>
+      <select id="anio" name="anio">
+        {% for value, label in years %}
+          <option value="{{ value }}" {% if year and year.id == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="trimestre">Trimestre</label>
+      <select id="trimestre" name="trimestre">
+        {% for value, label in trimesters %}
+          <option value="{{ value }}" {% if trimester and trimester.id == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
+  </form>
+
+  {% if changes %}
+    <div class="table-wrap">
+      <table class="data">
+        <caption>Últimos {{ changes|length }} cambios</caption>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Estudiante</th>
+            <th>Materia</th>
+            <th>Antes</th>
+            <th>Después</th>
+            <th>Motivo</th>
+            <th>Responsable</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for change in changes %}
+            <tr>
+              <td>{{ change.created_at|datetime }}</td>
+              <td>{{ change.student.full_name if change.student else '—' }}</td>
+              <td>{{ change.course_subject.label if change.course_subject else '—' }}</td>
+              <td>{{ config.format(change.previous_score) }}</td>
+              <td>{{ config.format(change.new_score) }}</td>
+              <td>{{ change.reason or '—' }}</td>
+              <td>{{ change.actor.full_name if change.actor else 'Sistema' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin cambios registrados</h3>
+      <p class="mb-0">Las modificaciones de notas aparecerán en este historial.</p>
+    </div>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Calendario escolar{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Calendario escolar</h1>
+      <p>Eventos públicos e internos: reuniones, evaluaciones, actos cívicos y fechas administrativas.</p>
+    </div>
+    <a class="btn btn--primary btn--sm" href="{{ url_for('admin.event_new') }}">Nuevo evento</a>
+  </div>
+
+  <form class="filters" method="get" action="{{ url_for('admin.events') }}">
+    <div class="field">
+      <label for="mes">Mes (AAAA-MM)</label>
+      <input type="text" id="mes" name="mes" value="{{ month }}" placeholder="2026-05">
+    </div>
+    <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.events') }}">Ver todos</a>
+  </form>
+
+  {% if events %}
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th scope="col">Fecha</th>
+            <th scope="col">Evento</th>
+            <th scope="col">Categoría</th>
+            <th scope="col">Público</th>
+            <th scope="col">Lugar</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for event in events %}
+            <tr>
+              <td>{{ event.start_date|date }}{% if event.time_label %}<br><span class="small muted">{{ event.time_label }}</span>{% endif %}</td>
+              <td>
+                {{ event.title|truncate(48) }}
+                {% if event.course %}<br><span class="small muted">{{ event.course.label }}</span>{% endif %}
+              </td>
+              <td><span class="badge">{{ event.category_label }}</span></td>
+              <td>{{ event.audience_label }}</td>
+              <td>{{ event.location or '—' }}</td>
+              <td>
+                <span class="badge {{ 'badge--danger' if event.is_cancelled else 'badge--success' }}">
+                  {{ 'Cancelado' if event.is_cancelled else 'Activo' }}
+                </span>
+              </td>
+              <td>
+                <div class="actions">
+                  <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.event_edit', event_id=event.id) }}">Editar</a>
+                  <form method="post" action="{{ url_for('admin.event_cancel', event_id=event.id) }}"
+                        data-confirm="¿{{ 'Reactivar' if event.is_cancelled else 'Cancelar' }} el evento «{{ event.title }}»?">
+                    {{ csrf_field() }}
+                    <button class="btn btn--ghost btn--sm" type="submit">
+                      {{ 'Reactivar' if event.is_cancelled else 'Cancelar' }}
+                    </button>
+                  </form>
+                  {% if current_user.role == 'admin' %}
+                    <form method="post" action="{{ url_for('admin.event_delete', event_id=event.id) }}"
+                          data-confirm="¿Eliminar definitivamente el evento «{{ event.title }}»?">
+                      {{ csrf_field() }}
+                      <button class="btn btn--danger btn--sm" type="submit">Eliminar</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin eventos registrados</h3>
+      <p class="mb-0">Agregue las actividades del calendario escolar para informar a las familias.</p>
+      <a class="btn btn--primary btn--sm" href="{{ url_for('admin.event_new') }}">Nuevo evento</a>
+    </div>
+  {% endif %}
+{% endblock %}

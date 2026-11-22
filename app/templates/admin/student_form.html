@@ -1,0 +1,149 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}{{ 'Editar estudiante' if student else 'Nuevo estudiante' }}{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <ul class="breadcrumb">
+    <li><a href="{{ url_for('admin.students') }}">Estudiantes</a></li>
+    <li>{{ student.full_name if student else 'Nuevo estudiante' }}</li>
+  </ul>
+
+  <div class="page-head">
+    <div>
+      <h1>{{ 'Editar estudiante' if student else 'Registrar estudiante' }}</h1>
+      <p>Los datos personales de estudiantes son confidenciales.</p>
+    </div>
+  </div>
+
+  <form class="card" method="post" novalidate>
+    {{ csrf_field() }}
+    <div class="form-grid">
+      <div class="field">
+        <label for="code">Código / matrícula <span aria-hidden="true">*</span></label>
+        <input type="text" id="code" name="code" value="{{ form.code }}" required maxlength="30">
+        <span class="hint">Identificador interno único (no se publica).</span>
+      </div>
+      <div class="field">
+        <label for="first_name">Nombres <span aria-hidden="true">*</span></label>
+        <input type="text" id="first_name" name="first_name" value="{{ form.first_name }}" required maxlength="80">
+      </div>
+      <div class="field">
+        <label for="last_name">Apellidos <span aria-hidden="true">*</span></label>
+        <input type="text" id="last_name" name="last_name" value="{{ form.last_name }}" required maxlength="80">
+      </div>
+      <div class="field">
+        <label for="birth_date">Fecha de nacimiento</label>
+        <input type="date" id="birth_date" name="birth_date" value="{{ form.birth_date }}">
+      </div>
+      <div class="field">
+        <label for="gender">Género</label>
+        <select id="gender" name="gender">
+          <option value="">Sin especificar</option>
+          <option value="F" {% if form.gender == 'F' %}selected{% endif %}>Femenino</option>
+          <option value="M" {% if form.gender == 'M' %}selected{% endif %}>Masculino</option>
+          <option value="Otro" {% if form.gender == 'Otro' %}selected{% endif %}>Otro</option>
+        </select>
+      </div>
+      {% if not student %}
+        <div class="field">
+          <label for="course_id">Inscribir en curso</label>
+          <select id="course_id" name="course_id">
+            <option value="">Sin inscripción por ahora</option>
+            {% for course in courses %}
+              <option value="{{ course.id }}" {% if form.course_id|string == course.id|string %}selected{% endif %}>
+                {{ course.label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
+      <div class="field field--full">
+        <label for="notes">Observaciones internas</label>
+        <textarea id="notes" name="notes" rows="3" maxlength="1000">{{ form.notes }}</textarea>
+        <span class="hint">Visible sólo para administración y dirección.</span>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">
+        {{ 'Guardar cambios' if student else 'Registrar estudiante' }}
+      </button>
+      <a class="btn btn--ghost" href="{{ url_for('admin.students') }}">Cancelar</a>
+    </div>
+  </form>
+
+  {% if student %}
+    <div class="grid grid--2 mt-2">
+      <form class="card" method="post" action="{{ url_for('admin.student_enroll', student_id=student.id) }}">
+        {{ csrf_field() }}
+        <h2 class="card__title">Inscripción en curso</h2>
+        <div class="field">
+          <label for="course_id_enroll">Curso</label>
+          <select id="course_id_enroll" name="course_id" required>
+            <option value="">Seleccione un curso</option>
+            {% for course in courses %}
+              <option value="{{ course.id }}">{{ course.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn--primary btn--sm" type="submit">Inscribir en el curso</button>
+        </div>
+        <p class="small muted mb-0">
+          Al inscribir en un nuevo curso, la inscripción activa anterior pasa a estado "retirado".
+        </p>
+      </form>
+
+      <div class="card">
+        <h2 class="card__title">Historial de inscripciones</h2>
+        {% if student.enrollments %}
+          <div class="table-wrap">
+            <table class="data">
+              <thead>
+                <tr><th scope="col">Curso</th><th scope="col">Año</th><th scope="col">Estado</th></tr>
+              </thead>
+              <tbody>
+                {% for enrollment in student.enrollments|sort(attribute='id', reverse=True) %}
+                  <tr>
+                    <td>{{ enrollment.course.label if enrollment.course else '—' }}</td>
+                    <td>{{ enrollment.academic_year }}</td>
+                    <td>
+                      <span class="badge {{ 'badge--success' if enrollment.status == 'activo' else 'badge--muted' }}">
+                        {{ ENROLLMENT_STATUS_LABELS.get(enrollment.status, enrollment.status) }}
+                      </span>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="small muted mb-0">El estudiante no tiene inscripciones registradas.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mt-2">
+      <h2 class="card__title">Tutores vinculados</h2>
+      {% if student.parent_links %}
+        <ul class="small">
+          {% for link in student.parent_links %}
+            <li>
+              {{ link.parent.user.full_name if link.parent and link.parent.user else '—' }}
+              ({{ link.relationship or (link.parent.relationship if link.parent else 'Tutor') }})
+              {% if link.parent and link.parent.user %} · {{ link.parent.user.email }}{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+        <p class="small muted mb-0">Para modificar las vinculaciones, utilice la sección Familias.</p>
+      {% else %}
+        <p class="small muted mb-0">
+          Este estudiante no tiene tutores vinculados. Use la sección Familias para vincularlos.
+        </p>
+      {% endif %}
+    </div>
+  {% endif %}
+{% endblock %}
+

@@ -1,0 +1,68 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Familias{% endblock %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Familias</h1>
+      <p>Padres, madres y tutores con acceso al portal de familias.</p>
+    </div>
+    <a class="btn btn--primary btn--sm" href="{{ url_for('admin.parent_new') }}">Registrar familia</a>
+  </div>
+
+  <form class="filters" method="get" action="{{ url_for('admin.parents') }}">
+    <div class="field">
+      <label for="q">Buscar por nombre o correo</label>
+      <input type="search" id="q" name="q" value="{{ search }}">
+    </div>
+    <button class="btn btn--primary btn--sm" type="submit">Buscar</button>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.parents') }}">Limpiar</a>
+  </form>
+
+  {% if parents %}
+    <div class="table-wrap">
+      <table class="data">
+        <caption>{{ pagination.total }} familia(s) registradas</caption>
+        <thead>
+          <tr>
+            <th scope="col">Tutor</th>
+            <th scope="col">Correo</th>
+            <th scope="col">Vínculo</th>
+            <th scope="col">Estudiantes</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for parent in parents %}
+            <tr>
+              <td>{{ parent.user.full_name if parent.user else '—' }}</td>
+              <td>{{ parent.user.email if parent.user else '—' }}</td>
+              <td>{{ parent.relationship or '—' }}</td>
+              <td>{{ parent.students|length }}</td>
+              <td>
+                <span class="badge {{ 'badge--success' if parent.user and parent.user.is_active else 'badge--muted' }}">
+                  {{ 'Activo' if parent.user and parent.user.is_active else 'Inactivo' }}
+                </span>
+              </td>
+              <td>
+                <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.parent_edit', parent_id=parent.id) }}">Gestionar</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% set endpoint = 'admin.parents' %}
+    {% set extra = {'q': search} %}
+    {% include "partials/_pagination.html" with context %}
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin familias registradas</h3>
+      <p class="mb-0">Registre una familia y vincúlela con sus hijos para habilitar el portal.</p>
+      <a class="btn btn--primary btn--sm" href="{{ url_for('admin.parent_new') }}">Registrar familia</a>
+    </div>
+  {% endif %}
+{% endblock %}

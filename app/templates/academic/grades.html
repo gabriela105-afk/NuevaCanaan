@@ -1,0 +1,195 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Registrar notas{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Registro de calificaciones</h1>
+      <p>Notas por materia y trimestre. Cada cambio queda auditado.</p>
+    </div>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('academic.history') }}">Ver historial</a>
+  </div>
+
+  <form class="filters" method="get" action="{{ url_for('academic.grades') }}">
+    <div class="field">
+      <label for="anio">Año escolar</label>
+      <select id="anio" name="anio">
+        {% for value, label in years %}
+          <option value="{{ value }}" {% if year and year.id == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="trimestre">Trimestre</label>
+      <select id="trimestre" name="trimestre">
+        {% for value, label in trimesters %}
+          <option value="{{ value }}" {% if trimester and trimester.id == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="asignacion">Curso y materia</label>
+      <select id="asignacion" name="asignacion">
+        <option value="">Seleccione</option>
+        {% for value, label in options %}
+          <option value="{{ value }}" {% if link and link.id == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn--primary btn--sm" type="submit">Abrir planilla</button>
+  </form>
+
+  {% if not config.is_configured %}
+    <div class="alert alert--warning">
+      No hay escala configurada; las notas no pueden registrarse.
+      {% if current_user.role == 'admin' %}
+        <a href="{{ url_for('academic.config') }}">Configurar escala</a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if trimester and trimester.is_closed %}
+    <div class="alert alert--info">
+      El trimestre está cerrado. Reabrálo desde
+      <a href="{{ url_for('academic.years', anio=year.id if year else None) }}">Años y trimestres</a>
+      para modificar notas.
+    </div>
+  {% endif %}
+
+  {% if link and trimester %}
+    <section class="card">
+      <h2 class="card__title">{{ link.label }}</h2>
+      <p class="small muted">
+        {{ trimester.full_label }} · Docente: {{ link.teacher_name }} ·
+        {{ students|length }} estudiante(s) inscritos.
+      </p>
+
+      {% if students %}
+        <form method="post">
+          {{ csrf_field() }}
+          <input type="hidden" name="course_subject_id" value="{{ link.id }}">
+          <div class="field">
+            <label for="reason">Motivo del registro o cambio</label>
+            <input type="text" id="reason" name="reason" maxlength="200"
+                   placeholder="Ej.: Evaluación trimestral, corrección de acta">
+            <span class="hint">Se guarda en el historial de cambios de notas.</span>
+          </div>
+          <div class="table-wrap">
+            <table class="data">
+              <thead>
+                <tr>
+                  <th>Estudiante</th>
+                  <th>Nota ({{ config.format(config.min_score) }}–{{ config.format(config.max_score) }})</th>
+                  <th>Observación breve</th>
+                  <th>Estado actual</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for student in students %}
+                  {% set grade = existing_grades.get(student.id) %}
+                  <tr>
+                    <td>{{ student.full_name }}</td>
+                    <td>
+                      <input type="number" name="score_{{ student.id }}"
+                             min="{{ config.min_score }}" max="{{ config.max_score }}" step="0.01"
+                             value="{{ grade.score if grade else '' }}"
+                             aria-label="Nota de {{ student.full_name }}">
+                    </td>
+                    <td>
+                      <input type="text" name="note_{{ student.id }}" maxlength="300"
+                             value="{{ grade.observations if grade else '' }}"
+                             aria-label="Observación de {{ student.full_name }}">
+                    </td>
+                    <td>
+                      {% if grade %}
+                        {{ grade.display_score }}
+                        {% if grade.status == 'aprobado' %}
+                          <span class="badge badge--success">Aprobado</span>
+                        {% elif grade.status == 'reprobado' %}
+                          <span class="badge badge--danger">Reprobado</span>
+                        {% endif %}
+                      {% else %}
+                        <span class="muted">Sin nota</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit"
+                    {% if trimester.is_closed or not config.is_configured %}disabled{% endif %}>
+              Guardar notas
+            </button>
+          </div>
+          <p class="small muted mb-0">
+            Deje la nota vacía para no modificar al estudiante. Para borrar una
+            nota existente utilice la sección de eliminación.
+          </p>
+        </form>
+      {% else %}
+        <div class="empty-state">
+          <p class="mb-0">El curso no tiene estudiantes activos inscritos.</p>
+        </div>
+      {% endif %}
+    </section>
+
+    {% if existing_grades %}
+      <section class="card">
+        <h2 class="card__title">Eliminar una nota</h2>
+        <p class="small muted">
+          La eliminación requiere motivo y queda registrada en el historial.
+        </p>
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Estudiante</th>
+                <th>Nota</th>
+                <th>Motivo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for student_id, grade in existing_grades.items() %}
+                <tr>
+                  <td>{{ grade.student.full_name if grade.student else student_id }}</td>
+                  <td>{{ grade.display_score }}</td>
+                  <td>
+                    <input form="delete_{{ grade.id }}" type="text" name="reason"
+                           maxlength="200" required aria-label="Motivo de eliminación">
+                  </td>
+                  <td>
+                    <form id="delete_{{ grade.id }}" method="post"
+                          action="{{ url_for('academic.grade_delete', grade_id=grade.id) }}"
+                          data-confirm="¿Eliminar definitivamente esta nota?">
+                      {{ csrf_field() }}
+                      <button class="btn btn--danger btn--sm" type="submit"
+                              {% if trimester.is_closed %}disabled{% endif %}>
+                        Eliminar
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% endif %}
+  {% else %}
+    <div class="card empty-state">
+      <h3>Seleccione una planilla</h3>
+      <p class="mb-0">
+        Elija el año, el trimestre y la materia del curso para registrar notas.
+        Si no aparece la materia, primero
+        <a href="{{ url_for('academic.assignments') }}">asígnela a un curso</a>.
+      </p>
+    </div>
+  {% endif %}
+{% endblock %}
+

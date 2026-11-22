@@ -1,0 +1,121 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}{{ 'Editar noticia' if post else 'Publicar noticia' }}{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <ul class="breadcrumb">
+    <li><a href="{{ url_for('news_admin.posts') }}">Noticias</a></li>
+    <li>{{ post.title|truncate(40) if post else 'Nueva publicación' }}</li>
+  </ul>
+
+  <div class="page-head">
+    <div>
+      <h1>{{ 'Editar noticia' if post else 'Publicar noticia' }}</h1>
+      <p>Las noticias publicadas aparecen en el muro de {{ institution.nombre_portal or 'Nueva Canaán Noticias' }}.</p>
+    </div>
+    {% if post and post.is_published %}
+      <a class="btn btn--ghost btn--sm" href="{{ url_for('news.detail', post_id=post.id) }}">Ver en el muro</a>
+    {% endif %}
+  </div>
+
+  <form class="card" method="post" enctype="multipart/form-data" novalidate>
+    {{ csrf_field() }}
+    <div class="form-grid">
+      <div class="field field--full">
+        <label for="title">Título de la noticia <span aria-hidden="true">*</span></label>
+        <input type="text" id="title" name="title" value="{{ form.title }}" required maxlength="180"
+               placeholder="Ej.: Estudiantes destacan en el campeonato interescolar">
+      </div>
+
+      <div class="field field--full">
+        <label for="summary">Resumen (opcional)</label>
+        <input type="text" id="summary" name="summary" value="{{ form.summary }}" maxlength="300"
+               placeholder="Una o dos líneas que resuman la noticia">
+        <span class="hint">Se muestra en las tarjetas del muro, debajo del título.</span>
+      </div>
+
+      <div class="field field--full">
+        <label for="body">Contenido de la noticia <span aria-hidden="true">*</span></label>
+        <textarea id="body" name="body" rows="10" required maxlength="12000"
+                  data-counter="body-counter"
+                  placeholder="Describa la actividad, los participantes y los resultados.">{{ form.body }}</textarea>
+        <span class="hint" id="body-counter"></span>
+      </div>
+
+      <div class="field">
+        <label for="category">Categoría</label>
+        <select id="category" name="category">
+          {% for item in categories %}
+            <option value="{{ item }}" {% if form.category == item %}selected{% endif %}>
+              {{ NEWS_CATEGORY_LABELS.get(item, item) }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="status">Estado</label>
+        <select id="status" name="status">
+          {% for item in statuses %}
+            <option value="{{ item }}" {% if form.status == item %}selected{% endif %}>
+              {{ NEWS_STATUS_LABELS.get(item, item) }}
+            </option>
+          {% endfor %}
+        </select>
+        <span class="hint">Los borradores no son visibles para el público.</span>
+      </div>
+
+      <div class="field field--full">
+        <label for="image">Fotografía principal</label>
+        <input type="file" id="image" name="image" accept=".png,.jpg,.jpeg,.webp">
+        <span class="hint">
+          Formatos permitidos: PNG, JPG o WEBP. Tamaño máximo {{ config.MAX_ATTACHMENT_MB }} MB.
+          Se recomienda una imagen horizontal de al menos 1200 px de ancho.
+        </span>
+        {% if post and post.cover_image %}
+          <div class="news-form__cover">
+            {% if post.cover_image.is_available %}
+              <img src="{{ url_for('news.image', image_id=post.cover_image.id) }}"
+                   alt="{{ post.cover_image.alt or post.title }}">
+            {% else %}
+              <p class="small muted mb-0">La fotografía registrada ya no está disponible en el servidor.</p>
+            {% endif %}
+            <label class="check" style="margin-top: 0.5rem;">
+              <input type="checkbox" name="remove_image" value="1">
+              <span>Eliminar la fotografía actual</span>
+            </label>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="field field--full">
+        <label class="check">
+          <input type="checkbox" name="is_pinned" value="1" {% if form.is_pinned %}checked{% endif %}>
+          <span>Destacar la noticia en la parte superior del muro</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" name="allow_comments" value="1" {% if form.allow_comments %}checked{% endif %}>
+          <span>Permitir comentarios del público en esta publicación</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">
+        {{ 'Guardar cambios' if post else 'Guardar publicación' }}
+      </button>
+      <a class="btn btn--ghost" href="{{ url_for('news_admin.posts') }}">Cancelar</a>
+    </div>
+  </form>
+
+  {% if post %}
+    <p class="small muted mt-2">
+      Creada por {{ post.author_name }}
+      el {{ post.created_at|newsdate }}.
+      {% if post.published_at %}Publicada el {{ post.published_at|newsdate }}.{% endif %}
+      Estado actual: {{ post.status_label }}.
+    </p>
+  {% endif %}
+{% endblock %}

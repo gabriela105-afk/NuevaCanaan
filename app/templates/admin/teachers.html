@@ -1,0 +1,71 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Docentes{% endblock %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Docentes</h1>
+      <p>Registro de docentes y asignación de cursos.</p>
+    </div>
+    <a class="btn btn--primary btn--sm" href="{{ url_for('admin.teacher_new') }}">Registrar docente</a>
+  </div>
+
+  <form class="filters" method="get" action="{{ url_for('admin.teachers') }}">
+    <div class="field">
+      <label for="q">Buscar por nombre o correo</label>
+      <input type="search" id="q" name="q" value="{{ search }}">
+    </div>
+    <button class="btn btn--primary btn--sm" type="submit">Buscar</button>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.teachers') }}">Limpiar</a>
+  </form>
+
+  {% if teachers %}
+    <div class="table-wrap">
+      <table class="data">
+        <caption>{{ pagination.total }} docente(s) registrados</caption>
+        <thead>
+          <tr>
+            <th scope="col">Docente</th>
+            <th scope="col">Correo</th>
+            <th scope="col">Especialidad</th>
+            <th scope="col">Cursos</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for teacher in teachers %}
+            <tr>
+              <td>
+                {{ teacher.user.full_name if teacher.user else '—' }}
+                {% if teacher.employee_code %}<br><span class="small muted">{{ teacher.employee_code }}</span>{% endif %}
+              </td>
+              <td>{{ teacher.user.email if teacher.user else '—' }}</td>
+              <td>{{ teacher.specialty or '—' }}</td>
+              <td>{{ teacher.courses|length }}</td>
+              <td>
+                <span class="badge {{ 'badge--success' if teacher.user and teacher.user.is_active else 'badge--muted' }}">
+                  {{ 'Activo' if teacher.user and teacher.user.is_active else 'Inactivo' }}
+                </span>
+              </td>
+              <td>
+                <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.teacher_edit', teacher_id=teacher.id) }}">Gestionar</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% set endpoint = 'admin.teachers' %}
+    {% set extra = {'q': search} %}
+    {% include "partials/_pagination.html" with context %}
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin docentes registrados</h3>
+      <p class="mb-0">Registre docentes para habilitar el panel de gestión académica.</p>
+      <a class="btn btn--primary btn--sm" href="{{ url_for('admin.teacher_new') }}">Registrar docente</a>
+    </div>
+  {% endif %}
+{% endblock %}

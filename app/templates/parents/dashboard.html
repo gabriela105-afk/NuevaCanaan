@@ -1,0 +1,152 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Portal de familias{% endblock %}
+
+{% block sidebar %}{% include "partials/_sidebar_parents.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Bienvenido(a), {{ current_user.full_name }}</h1>
+      <p>Resumen de la información académica de sus hijos y de los avisos institucionales.</p>
+    </div>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('auth.profile') }}">Mi perfil</a>
+  </div>
+
+  {% if students %}
+    <section aria-labelledby="titulo-hijos">
+      <h2 id="titulo-hijos">Mis hijos</h2>
+      <div class="grid grid--2">
+        {% for student in students %}
+          {% set summary = attendance_summary.get(student.id, {}) %}
+          <article class="card">
+            <div class="row" style="gap: 0.85rem; align-items: center;">
+              <span class="avatar">{{ student.full_name|initials }}</span>
+              <div>
+                <h3 class="card__title mb-0">{{ student.full_name }}</h3>
+                <p class="small muted mb-0">
+                  Código: {{ student.code }}
+                  {% if student.current_course %} · {{ student.current_course.label }}{% endif %}
+                </p>
+              </div>
+            </div>
+            <hr class="divider">
+            <p class="small">
+              <strong>Asistencia reciente:</strong>
+              {% if summary.rate is not none %}
+                {{ summary.rate }}% ({{ summary.present }} de {{ summary.total }} registros)
+              {% else %}
+                Sin registros de asistencia
+              {% endif %}
+            </p>
+            <a class="btn btn--ghost btn--sm"
+               href="{{ url_for('parents.child_detail', student_id=student.id) }}">
+              Ver ficha académica
+            </a>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  {% else %}
+    <div class="card empty-state">
+      <h3>No hay estudiantes vinculados a su cuenta</h3>
+      <p class="mb-0">
+        Comuníquese con la administración del colegio para que vinculen a sus hijos
+        con su cuenta de tutor.
+      </p>
+    </div>
+  {% endif %}
+
+  <section class="mt-2" aria-labelledby="titulo-avisos">
+    <div class="section__head">
+      <h2 id="titulo-avisos">Últimos comunicados</h2>
+      <a class="btn btn--ghost btn--sm" href="{{ url_for('parents.announcements') }}">Ver historial</a>
+    </div>
+    {% if announcements %}
+      <div class="stack">
+        {% for announcement in announcements %}
+          <article class="card {{ 'card--pinned' if announcement.is_pinned }}">
+            <div class="card__meta">
+              <span class="badge badge--{{ announcement.priority }}">{{ announcement.priority_label }}</span>
+              <span class="badge">{{ announcement.category_label }}</span>
+              <span>{{ announcement.published_at|longdate }}</span>
+            </div>
+            <h3 class="card__title">
+              <a href="{{ url_for('announcements.detail', announcement_id=announcement.id) }}">{{ announcement.title }}</a>
+            </h3>
+            <p class="card__body">{{ announcement.summary or announcement.body|truncate(180) }}</p>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="card empty-state"><p class="mb-0">No hay comunicados vigentes.</p></div>
+    {% endif %}
+  </section>
+
+  <div class="grid grid--2 mt-2">
+    <section aria-labelledby="titulo-tareas">
+      <h2 id="titulo-tareas">Próximas tareas y evaluaciones</h2>
+      {% if pending_assignments %}
+        <ul class="timeline">
+          {% for item in pending_assignments %}
+            <li>
+              <span class="timeline__date">
+                <span class="timeline__day">{{ item.due_date.day if item.due_date else '—' }}</span>
+                <span class="timeline__month">{{ item.due_date|date('%b') if item.due_date else '' }}</span>
+              </span>
+              <div class="timeline__body">
+                <h4>{{ item.title }}</h4>
+                <p>{{ item.kind_label }}{% if item.subject %} · {{ item.subject }}{% endif %}
+                   {% if item.course %} · {{ item.course.label }}{% endif %}</p>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="card empty-state"><p class="mb-0">No hay tareas registradas por los docentes.</p></div>
+      {% endif %}
+    </section>
+
+    <section aria-labelledby="titulo-eventos">
+      <h2 id="titulo-eventos">Próximas actividades</h2>
+      {% if events %}
+        <ul class="timeline">
+          {% for event in events %}
+            <li>
+              <span class="timeline__date">
+                <span class="timeline__day">{{ event.start_date.day }}</span>
+                <span class="timeline__month">{{ event.start_date|date('%b') }}</span>
+              </span>
+              <div class="timeline__body">
+                <h4>{{ event.title }}</h4>
+                <p>{{ event.category_label }}{% if event.time_label %} · {{ event.time_label }}{% endif %}</p>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+        <a class="btn btn--ghost btn--sm" href="{{ url_for('parents.calendar') }}">Ver calendario</a>
+      {% else %}
+        <div class="card empty-state"><p class="mb-0">Sin actividades próximas.</p></div>
+      {% endif %}
+    </section>
+  </div>
+
+  {% if unread %}
+    <section class="mt-2">
+      <h2>Notificaciones recientes</h2>
+      <div class="stack">
+        {% for notification in unread %}
+          <div class="card card--accent">
+            <div class="card__meta">
+              <span class="badge badge--warning">Sin leer</span>
+              <span>{{ notification.created_at|datetime }}</span>
+            </div>
+            <h3 class="card__title">{{ notification.title }}</h3>
+            {% if notification.body %}<p class="card__body mb-0">{{ notification.body }}</p>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      <a class="btn btn--ghost btn--sm mt-2" href="{{ url_for('messages.notifications') }}">Ver todas</a>
+    </section>
+  {% endif %}
+{% endblock %}
+

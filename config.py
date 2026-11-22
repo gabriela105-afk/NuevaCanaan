@@ -96,7 +96,12 @@ def mask_database_uri(uri: str) -> str:
 def _engine_options(uri: str) -> dict:
     """Opciones del motor según el tipo de base de datos."""
     if uri.startswith("sqlite"):
-        return {"pool_pre_ping": True}
+        # ``timeout`` evita fallos "database is locked" cuando Gunicorn usa
+        # varios workers sobre el mismo archivo SQLite.
+        return {
+            "pool_pre_ping": True,
+            "connect_args": {"timeout": _env_int("SQLITE_TIMEOUT", 30)},
+        }
 
     options: dict = {
         "pool_pre_ping": True,
@@ -105,9 +110,17 @@ def _engine_options(uri: str) -> dict:
         "max_overflow": _env_int("DB_MAX_OVERFLOW", 2),
         "pool_timeout": _env_int("DB_POOL_TIMEOUT", 30),
     }
+    connect_args: dict = {}
     if "+psycopg:" in uri and ":6543" in uri:
         # Puerto 6543 = pooler de Supabase: no admite sentencias preparadas.
-        options["connect_args"] = {"prepare_threshold": 0}
+        connect_args["prepare_threshold"] = 0
+    if "+psycopg:" in uri:
+        # El pooler resuelve a varias IPs; sin límite, una IP que no responde
+        # bloquea el arranque de Gunicorn indefinidamente. libpq reintenta la
+        # siguiente dirección al agotar este tiempo.
+        connect_args["connect_timeout"] = _env_int("DB_CONNECT_TIMEOUT", 10)
+    if connect_args:
+        options["connect_args"] = connect_args
     return options
 
 
@@ -141,12 +154,21 @@ class Config:
     WTF_CSRF_ENABLED = True
     WTF_CSRF_TIME_LIMIT = None
 
-    # --- Publicaciones y fotos ----------------------------------------
+    # --- Publicaciones y archivos -------------------------------------
     POST_MAX_LENGTH = 5000
     MAX_CONTENT_LENGTH = _env_int("MAX_UPLOAD_MB", 8) * 1024 * 1024
     MAX_ATTACHMENT_MB = _env_int("MAX_ATTACHMENT_MB", 5)
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", str(INSTANCE_DIR / "uploads"))
     ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+    ALLOWED_ATTACHMENT_EXTENSIONS = {
+        "pdf", "png", "jpg", "jpeg", "webp", "txt", "docx", "xlsx",
+    }
+
+    # --- Seguridad de acceso ------------------------------------------
+    LOGIN_MAX_ATTEMPTS = _env_int("LOGIN_MAX_ATTEMPTS", 5)
+    LOGIN_LOCK_MINUTES = _env_int("LOGIN_LOCK_MINUTES", 15)
+    PASSWORD_MIN_LENGTH = _env_int("PASSWORD_MIN_LENGTH", 8)
+    PASSWORD_MAX_LENGTH = 128
 
     # --- Almacenamiento permanente de fotografías (Supabase Storage) ---
     # ``auto`` usa Supabase cuando URL + clave + bucket están definidos; si no,
@@ -170,8 +192,19 @@ class Config:
     INSTITUTION_NAME = "Colegio Técnico Humanístico Nueva Canaán"
     INSTITUTION_SHORT_NAME = "Nueva Canaán"
     INSTITUTION_LOGO = os.getenv("INSTITUTION_LOGO", "img/logo.svg")
+    INSTITUTION_COVER = os.getenv("INSTITUTION_COVER", "img/portada.svg")
     INSTITUTION_FAVICON = os.getenv("INSTITUTION_FAVICON", "img/logo.svg")
     UTC_OFFSET_HOURS = _env_int("UTC_OFFSET_HOURS", -4)
+
+    # --- Paginación ---------------------------------------------------
+    ITEMS_PER_PAGE = _env_int("ITEMS_PER_PAGE", 10)
+
+    # --- NUEVA CANAÁN NOTICIAS ----------------------------------------
+    NEWS_PER_PAGE = _env_int("NEWS_PER_PAGE", 6)
+    NEWS_COMMENTS_PER_PAGE = _env_int("NEWS_COMMENTS_PER_PAGE", 15)
+
+    # --- Correo (opcional, no configurado por defecto) -----------------
+    MAIL_ENABLED = _env_bool("MAIL_ENABLED", False)
 
     # --- Cabeceras de seguridad ---------------------------------------
     SECURITY_HEADERS = {

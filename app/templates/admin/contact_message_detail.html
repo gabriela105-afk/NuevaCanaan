@@ -1,0 +1,56 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Mensaje de contacto{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <ul class="breadcrumb">
+    <li><a href="{{ url_for('admin.contact_messages') }}">Mensajes de contacto</a></li>
+    <li>{{ message.subject|truncate(40) }}</li>
+  </ul>
+
+  <div class="page-head">
+    <div>
+      <h1>{{ message.subject }}</h1>
+      <p>Recibido el {{ message.created_at|datetime }}</p>
+    </div>
+    {% if message.is_read %}
+      <span class="badge badge--muted">Leído</span>
+    {% else %}
+      <span class="badge badge--warning">Sin leer</span>
+    {% endif %}
+  </div>
+
+  <article class="card">
+    <h2 class="card__title">Datos del remitente</h2>
+    <ul class="small stack">
+      <li><strong>Nombre:</strong> {{ message.name }}</li>
+      <li><strong>Correo:</strong> {{ message.email or 'No indicado' }}</li>
+      <li><strong>Teléfono:</strong> {{ message.phone or 'No indicado' }}</li>
+      <li><strong>IP de origen:</strong> {{ message.ip_address or 'No registrada' }}</li>
+    </ul>
+    <hr class="divider">
+    <h2 class="card__title">Mensaje</h2>
+    <div>{{ message.body|nl2br }}</div>
+  </article>
+
+  <div class="row mt-2">
+    <a class="btn btn--ghost" href="{{ url_for('admin.contact_messages') }}">‹ Volver a la bandeja</a>
+    {% if message.email %}
+      <a class="btn btn--ghost" href="mailto:{{ message.email }}?subject=Respuesta%20a%20su%20consulta">Responder por correo</a>
+    {% endif %}
+    {% if current_user.role == 'admin' %}
+      <form method="post" action="{{ url_for('admin.contact_message_delete', message_id=message.id) }}"
+            data-confirm="¿Eliminar este mensaje definitivamente?">
+        {{ csrf_field() }}
+        <button class="btn btn--danger" type="submit">Eliminar mensaje</button>
+      </form>
+    {% endif %}
+  </div>
+
+  <div class="notice mt-2">
+    La respuesta por correo se realiza desde su cliente de correo habitual. La plataforma no
+    envía correos automáticos (integración no configurada).
+  </div>
+{% endblock %}

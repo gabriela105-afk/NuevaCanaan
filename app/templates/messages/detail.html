@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ message.subject }}{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block content %}
+  <section class="section">
+    <div class="container" style="max-width: 860px;">
+      <ul class="breadcrumb">
+        <li><a href="{{ url_for('messages.inbox') }}">Mensajes</a></li>
+        <li>{{ message.subject|truncate(50) }}</li>
+      </ul>
+
+      <h1>{{ message.subject }}</h1>
+
+      <div class="thread">
+        {% for item in thread %}
+          <article class="thread__item {{ 'thread__item--own' if item.sender_id == current_user.id }}">
+            <div class="thread__head">
+              <strong>
+                {{ item.sender.full_name if item.sender else 'Usuario' }}
+                <span class="muted">→</span>
+                {{ item.recipient.full_name if item.recipient else 'Usuario' }}
+              </strong>
+              <span>{{ item.created_at|datetime }}</span>
+            </div>
+            <div>{{ item.body|nl2br }}</div>
+          </article>
+        {% endfor %}
+      </div>
+
+      <form class="card mt-2" method="post"
+            action="{{ url_for('messages.reply', message_id=message.id) }}">
+        {{ csrf_field() }}
+        <div class="field field--full">
+          <label for="body">Responder</label>
+          <textarea id="body" name="body" rows="4" required maxlength="4000"></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn--primary" type="submit">Enviar respuesta</button>
+          <a class="btn btn--ghost" href="{{ url_for('messages.inbox') }}">Volver a la bandeja</a>
+        </div>
+      </form>
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Solicitud no válida{% endblock %}
+{% block content %}
+  <section class="section">
+    <div class="container" style="max-width: 640px;">
+      <div class="card text-center">
+        <h1>Solicitud no válida</h1>
+        <p class="muted">
+          El formulario enviado expiró o no pudo verificarse por seguridad.
+          Vuelva a intentarlo desde la página correspondiente.
+        </p>
+        {% if reason %}<p class="small muted">Detalle técnico: {{ reason }}</p>{% endif %}
+        <div class="form-actions" style="justify-content: center;">
+          <a class="btn btn--primary" href="{{ url_for('main.index') }}">Volver al inicio</a>
+          <a class="btn btn--ghost" href="{{ url_for('main.contacto') }}">Ir a contacto</a>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Mis cursos{% endblock %}
+
+{% block sidebar %}{% include "partials/_sidebar_teachers.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Mis cursos</h1>
+      <p>Cursos que la administración le asignó. Sólo puede gestionar estos cursos.</p>
+    </div>
+  </div>
+
+  {% if courses %}
+    <div class="stack">
+      {% for course in courses %}
+        <article class="card">
+          <div class="row row--between" style="align-items: flex-start;">
+            <div>
+              <h2 class="card__title">{{ course.label }}</h2>
+              <p class="small muted">
+                {{ course.total_students }} estudiante(s) activos
+                {% if course.level %} · Nivel {{ course.level }}{% endif %}
+                {% if course.description %} · {{ course.description }}{% endif %}
+              </p>
+              {% set my_subjects = course.assignments | selectattr('teacher_id', 'equalto', profile.id) | map(attribute='subject') | unique | list %}
+              {% if my_subjects %}
+                <p class="small">Materias a su cargo: {{ my_subjects|join(', ') }}</p>
+              {% endif %}
+            </div>
+            <div class="row">
+              <a class="btn btn--primary btn--sm"
+                 href="{{ url_for('teachers.course_detail', course_id=course.id) }}">Abrir</a>
+              <a class="btn btn--ghost btn--sm"
+                 href="{{ url_for('teachers.attendance', course_id=course.id) }}">Asistencia</a>
+              <a class="btn btn--ghost btn--sm"
+                 href="{{ url_for('teachers.grades', course_id=course.id) }}">Notas</a>
+              <a class="btn btn--ghost btn--sm"
+                 href="{{ url_for('teachers.assignment_new', course_id=course.id) }}">Nueva tarea</a>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin cursos asignados</h3>
+      <p class="mb-0">Solicite a la administración que registre sus cursos y materias.</p>
+    </div>
+  {% endif %}
+{% endblock %}

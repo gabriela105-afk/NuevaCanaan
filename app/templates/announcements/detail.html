@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}{{ announcement.title }}{% endblock %}
+{% block description %}{{ announcement.summary or announcement.title }}{% endblock %}
+{% from "partials/_macros.html" import page_head %}
+
+{% block content %}
+  <section class="section">
+    <div class="container">
+      <ul class="breadcrumb">
+        <li><a href="{{ url_for('main.index') }}">Inicio</a></li>
+        <li><a href="{{ url_for('announcements.index') }}">Comunicados</a></li>
+        <li>{{ announcement.title|truncate(60) }}</li>
+      </ul>
+
+      <article class="card">
+        <div class="card__meta">
+          <span class="badge badge--{{ announcement.priority }}">{{ announcement.priority_label }}</span>
+          <span class="badge">{{ announcement.category_label }}</span>
+          {% if announcement.audience == 'internal' %}
+            <span class="badge badge--warning">Comunicado interno</span>
+          {% endif %}
+          {% if announcement.is_pinned %}<span class="badge badge--gold">Fijado</span>{% endif %}
+          {% if announcement.status != 'published' %}
+            <span class="badge badge--muted">{{ announcement.status_label }} (no público)</span>
+          {% endif %}
+        </div>
+
+        <h1>{{ announcement.title }}</h1>
+        {% if announcement.summary %}
+          <p class="lead muted">{{ announcement.summary }}</p>
+        {% endif %}
+
+        <div class="card__meta">
+          <span>Publicado: {{ announcement.published_at|datetime if announcement.published_at else 'Sin fecha' }}</span>
+          <span>Autor: {{ announcement.author.full_name if announcement.author else 'Dirección institucional' }}</span>
+          {% if announcement.expires_at %}
+            <span>Vigente hasta: {{ announcement.expires_at|date }}</span>
+          {% endif %}
+          {% if announcement.course_labels %}
+            <span>Cursos: {{ announcement.course_labels|join(', ') }}</span>
+          {% endif %}
+        </div>
+
+        <hr class="divider">
+        <div class="card__body">{{ announcement.body|nl2br }}</div>
+
+        {% if announcement.attachment_path %}
+          <hr class="divider">
+          <h2 class="card__title">Archivo adjunto</h2>
+          {% if current_user.is_authenticated %}
+            <a class="btn btn--ghost btn--sm"
+               href="{{ url_for('announcements.attachment', announcement_id=announcement.id) }}">
+              Descargar {{ announcement.attachment_name }}
+            </a>
+            <span class="small muted">({{ announcement.attachment_size|filesize }})</span>
+          {% else %}
+            <p class="small muted">
+              El archivo adjunto está disponible únicamente para usuarios con sesión iniciada.
+              <a href="{{ url_for('auth.login', next=request.path) }}">Iniciar sesión</a>
+            </p>
+          {% endif %}
+        {% endif %}
+      </article>
+
+      <div class="row row--between mt-2">
+        <a class="btn btn--ghost" href="{{ url_for('announcements.index') }}">‹ Volver a comunicados</a>
+        {% if current_user.is_authenticated %}
+          <a class="btn btn--ghost" href="{{ url_for(current_user.dashboard_endpoint) }}">Ir a mi panel</a>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+{% endblock %}

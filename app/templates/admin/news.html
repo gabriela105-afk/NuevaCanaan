@@ -1,0 +1,153 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Noticias{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>{{ institution.nombre_portal or 'Nueva Canaán Noticias' }}</h1>
+      <p>Administre el muro público: publique actividades con fotografía, destaque noticias y modere los comentarios.</p>
+    </div>
+    <div class="actions">
+      <a class="btn btn--ghost btn--sm" href="{{ url_for('news.index') }}">Ver el muro</a>
+      <a class="btn btn--ghost btn--sm" href="{{ url_for('news_admin.comments') }}">Comentarios</a>
+      <a class="btn btn--primary btn--sm" href="{{ url_for('news_admin.post_new') }}">Publicar noticia</a>
+    </div>
+  </div>
+
+  <div class="grid grid--4">
+    <div class="stat">
+      <div class="stat__value">{{ pagination.total }}</div>
+      <div class="stat__label">Publicaciones en el filtro</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value">{{ posts|selectattr('is_pinned')|list|length }}</div>
+      <div class="stat__label">Destacadas en esta página</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value">{{ visible_comments }}</div>
+      <div class="stat__label">Comentarios visibles</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value">{{ total_comments - visible_comments }}</div>
+      <div class="stat__label">Comentarios ocultos</div>
+    </div>
+  </div>
+
+  <form class="filters mt-2" method="get" action="{{ url_for('news_admin.posts') }}">
+    <div class="field">
+      <label for="q">Buscar</label>
+      <input type="search" id="q" name="q" value="{{ search }}" placeholder="Título o contenido">
+    </div>
+    <div class="field">
+      <label for="estado">Estado</label>
+      <select id="estado" name="estado">
+        <option value="">Todos</option>
+        {% for item in statuses %}
+          <option value="{{ item }}" {% if item == status %}selected{% endif %}>{{ NEWS_STATUS_LABELS.get(item, item) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="categoria">Categoría</label>
+      <select id="categoria" name="categoria">
+        <option value="">Todas</option>
+        {% for item in categories %}
+          <option value="{{ item }}" {% if item == category %}selected{% endif %}>{{ NEWS_CATEGORY_LABELS.get(item, item) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('news_admin.posts') }}">Limpiar</a>
+  </form>
+
+  {% if posts %}
+    <div class="table-wrap">
+      <table class="data">
+        <caption>{{ pagination.total }} publicación(es) del muro</caption>
+        <thead>
+          <tr>
+            <th scope="col">Título</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Publicación</th>
+            <th scope="col">Interacción</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for post in posts %}
+            <tr>
+              <td>
+                {% if post.is_pinned %}<span class="badge badge--gold">Destacada</span> {% endif %}
+                {% if post.cover_image and post.cover_image.is_available %}<span class="badge badge--muted">Con foto</span> {% endif %}
+                <a href="{{ url_for('news_admin.post_edit', post_id=post.id) }}">{{ post.title|truncate(58) }}</a>
+                <br><span class="small muted">{{ post.category_label }} · {{ post.author_name }}</span>
+              </td>
+              <td>
+                <span class="badge {{ 'badge--success' if post.status == 'published' else ('badge--warning' if post.status == 'draft' else 'badge--muted') }}">
+                  {{ post.status_label }}
+                </span>
+              </td>
+              <td>
+                {% if post.published_at %}
+                  {{ post.published_at|newsdate }}
+                  <br><span class="small muted">{{ post.published_at|timeago }}</span>
+                {% else %}
+                  <span class="small muted">Sin publicar</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="small muted">
+                  {{ post.likes_count }} me gusta<br>{{ post.comments_count }} comentario{{ '' if post.comments_count == 1 else 's' }}
+                </span>
+              </td>
+              <td>
+                <div class="actions">
+                  <a class="btn btn--ghost btn--sm" href="{{ url_for('news_admin.post_edit', post_id=post.id) }}">Editar</a>
+                  {% if post.is_published %}
+                    <a class="btn btn--ghost btn--sm" href="{{ url_for('news.detail', post_id=post.id) }}">Ver</a>
+                    <form method="post" action="{{ url_for('news_admin.post_archive', post_id=post.id) }}"
+                          data-confirm="¿Archivar «{{ post.title }}»? Dejará de mostrarse en el muro.">
+                      {{ csrf_field() }}
+                      <button class="btn btn--ghost btn--sm" type="submit">Archivar</button>
+                    </form>
+                  {% else %}
+                    <form method="post" action="{{ url_for('news_admin.post_publish', post_id=post.id) }}"
+                          data-confirm="¿Publicar «{{ post.title }}» en el muro?">
+                      {{ csrf_field() }}
+                      <button class="btn btn--primary btn--sm" type="submit">Publicar</button>
+                    </form>
+                  {% endif %}
+                  <form method="post" action="{{ url_for('news_admin.post_pin', post_id=post.id) }}">
+                    {{ csrf_field() }}
+                    <button class="btn btn--ghost btn--sm" type="submit">
+                      {{ 'Quitar destacado' if post.is_pinned else 'Destacar' }}
+                    </button>
+                  </form>
+                  {% if current_user.role == 'admin' %}
+                    <form method="post" action="{{ url_for('news_admin.post_delete', post_id=post.id) }}"
+                          data-confirm="¿Eliminar definitivamente «{{ post.title }}» con su fotografía y comentarios?">
+                      {{ csrf_field() }}
+                      <button class="btn btn--danger btn--sm" type="submit">Eliminar</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% set endpoint = 'news_admin.posts' %}
+    {% set extra = {'estado': status, 'categoria': category, 'q': search} %}
+    {% include "partials/_pagination.html" with context %}
+  {% else %}
+    <div class="card empty-state mt-2">
+      <h3>Sin publicaciones</h3>
+      <p class="mb-0">Publique la primera noticia para que aparezca en el muro público.</p>
+      <a class="btn btn--primary btn--sm mt-2" href="{{ url_for('news_admin.post_new') }}">Publicar noticia</a>
+    </div>
+  {% endif %}
+{% endblock %}

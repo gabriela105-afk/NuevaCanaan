@@ -1,0 +1,71 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Publicar aviso{% endblock %}
+{% from "partials/_macros.html" import csrf_field, input, select, textarea %}
+
+{% block sidebar %}{% include "partials/_sidebar_teachers.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Publicar aviso para un curso</h1>
+      <p>El aviso será visible únicamente para las familias y estudiantes de los cursos seleccionados.</p>
+    </div>
+  </div>
+
+  {% if courses %}
+    <form class="card" method="post" action="{{ url_for('teachers.announcement_new') }}" novalidate>
+      {{ csrf_field() }}
+      <div class="form-grid">
+        {{ input('title', 'Título del aviso', form.title, required=True, maxlength=180) }}
+        {{ input('summary', 'Resumen (opcional)', form.summary, maxlength=300,
+                 hint='Se muestra en los listados y notificaciones.') }}
+        <div class="field">
+          <label for="category">Categoría</label>
+          <select id="category" name="category" required>
+            {% for item in categories %}
+              <option value="{{ item }}" {% if form.category == item %}selected{% endif %}>
+                {{ ANNOUNCEMENT_CATEGORY_LABELS.get(item, item) }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="priority">Prioridad</label>
+          <select id="priority" name="priority" required>
+            {% for item in priorities %}
+              <option value="{{ item }}" {% if form.priority == item %}selected{% endif %}>
+                {{ PRIORITY_LABELS.get(item, item) }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        {{ input('expires_at', 'Fecha de vencimiento (opcional)', form.expires_at, type='date') }}
+        {{ textarea('body', 'Contenido del aviso', form.body, rows=6, required=True,
+                    maxlength=4000, counter='body-counter') }}
+      </div>
+
+      <fieldset class="mt-2">
+        <legend>Cursos destinatarios</legend>
+        <div class="grid grid--2">
+          {% for course in courses %}
+            <label class="check">
+              <input type="checkbox" name="course_ids" value="{{ course.id }}"
+                     {% if course.id in form.course_ids %}checked{% endif %}>
+              <span>{{ course.label }} — {{ course.total_students }} estudiante(s)</span>
+            </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      <div class="form-actions">
+        <button class="btn btn--primary" type="submit">Publicar aviso</button>
+        <a class="btn btn--ghost" href="{{ url_for('teachers.announcements') }}">Cancelar</a>
+      </div>
+    </form>
+  {% else %}
+    <div class="card empty-state">
+      <h3>No tiene cursos asignados</h3>
+      <p class="mb-0">Solicite a la administración la asignación de cursos para publicar avisos.</p>
+    </div>
+  {% endif %}
+{% endblock %}

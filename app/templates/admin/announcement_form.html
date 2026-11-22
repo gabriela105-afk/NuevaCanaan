@@ -1,0 +1,145 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}{{ 'Editar comunicado' if announcement else 'Nuevo comunicado' }}{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <ul class="breadcrumb">
+    <li><a href="{{ url_for('admin.announcements') }}">Comunicados</a></li>
+    <li>{{ announcement.title|truncate(40) if announcement else 'Nuevo comunicado' }}</li>
+  </ul>
+
+  <div class="page-head">
+    <div>
+      <h1>{{ 'Editar comunicado' if announcement else 'Nuevo comunicado' }}</h1>
+      <p>Los comunicados publicados aparecen en el sitio público y generan notificaciones internas.</p>
+    </div>
+  </div>
+
+  <form class="card" method="post" enctype="multipart/form-data" novalidate>
+    {{ csrf_field() }}
+    <div class="form-grid">
+      <div class="field field--full">
+        <label for="title">Título <span aria-hidden="true">*</span></label>
+        <input type="text" id="title" name="title" value="{{ form.title }}" required maxlength="180">
+      </div>
+      <div class="field field--full">
+        <label for="summary">Resumen</label>
+        <input type="text" id="summary" name="summary" value="{{ form.summary }}" maxlength="300">
+        <span class="hint">Se muestra en los listados y en las notificaciones.</span>
+      </div>
+      <div class="field field--full">
+        <label for="body">Contenido <span aria-hidden="true">*</span></label>
+        <textarea id="body" name="body" rows="8" required maxlength="8000"
+                  data-counter="body-counter">{{ form.body }}</textarea>
+        <span class="hint" id="body-counter"></span>
+      </div>
+
+      <div class="field">
+        <label for="category">Categoría</label>
+        <select id="category" name="category">
+          {% for item in categories %}
+            <option value="{{ item }}" {% if form.category == item %}selected{% endif %}>
+              {{ ANNOUNCEMENT_CATEGORY_LABELS.get(item, item) }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="priority">Prioridad</label>
+        <select id="priority" name="priority">
+          {% for item in priorities %}
+            <option value="{{ item }}" {% if form.priority == item %}selected{% endif %}>
+              {{ PRIORITY_LABELS.get(item, item) }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="status">Estado</label>
+        <select id="status" name="status">
+          <option value="draft" {% if form.status == 'draft' %}selected{% endif %}>Borrador</option>
+          <option value="published" {% if form.status == 'published' %}selected{% endif %}>Publicado</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="expires_at">Fecha de vencimiento</label>
+        <input type="date" id="expires_at" name="expires_at" value="{{ form.expires_at }}">
+        <span class="hint">Opcional. Deja de mostrarse después de esa fecha.</span>
+      </div>
+
+      <div class="field">
+        <label for="audience">Público</label>
+        <select id="audience" name="audience" data-audience-select>
+          <option value="public" {% if form.audience == 'public' %}selected{% endif %}>Público general (sitio web)</option>
+          <option value="internal" {% if form.audience == 'internal' %}selected{% endif %}>Sólo usuarios con sesión</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="target_role">Dirigido a</label>
+        <select id="target_role" name="target_role">
+          <option value="">Todos los usuarios</option>
+          {% for item in roles %}
+            <option value="{{ item }}" {% if form.target_role == item %}selected{% endif %}>
+              {{ ROLE_LABELS.get(item, item) }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field field--full" data-internal-only hidden>
+        <label for="course_ids">Cursos destinatarios (comunicados internos)</label>
+        <select id="course_ids" name="course_ids" multiple size="5">
+          {% for course in courses %}
+            <option value="{{ course.id }}"
+              {% if course.id in form.course_ids %}selected{% endif %}>{{ course.label }}</option>
+          {% endfor %}
+        </select>
+        <span class="hint">
+          Si selecciona cursos, sólo las familias y docentes de esos cursos verán el comunicado.
+        </span>
+      </div>
+
+      <div class="field field--full">
+        <label for="attachment">Archivo adjunto</label>
+        <input type="file" id="attachment" name="attachment"
+               accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.docx,.xlsx">
+        <span class="hint">
+          Formatos permitidos: PDF, imágenes, DOCX, XLSX o TXT.
+          Tamaño máximo {{ config.MAX_ATTACHMENT_MB }} MB.
+        </span>
+        {% if announcement and announcement.attachment_path %}
+          <label class="check" style="margin-top: 0.5rem;">
+            <input type="checkbox" name="remove_attachment" value="1">
+            <span>Eliminar el adjunto actual ({{ announcement.attachment_name }})</span>
+          </label>
+        {% endif %}
+      </div>
+
+      <div class="field field--full">
+        <label class="check">
+          <input type="checkbox" name="is_pinned" value="1" {% if form.is_pinned %}checked{% endif %}>
+          <span>Fijar en la portada y en la parte superior de los listados</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">
+        {{ 'Guardar cambios' if announcement else 'Guardar comunicado' }}
+      </button>
+      <a class="btn btn--ghost" href="{{ url_for('admin.announcements') }}">Cancelar</a>
+    </div>
+  </form>
+
+  {% if announcement %}
+    <p class="small muted mt-2">
+      Creado por {{ announcement.author.full_name if announcement.author else 'usuario eliminado' }}
+      el {{ announcement.created_at|datetime }}.
+      {% if announcement.published_at %}Publicado el {{ announcement.published_at|datetime }}.{% endif %}
+      <a href="{{ url_for('announcements.detail', announcement_id=announcement.id) }}">Ver en el sitio</a>
+    </p>
+  {% endif %}
+{% endblock %}
+

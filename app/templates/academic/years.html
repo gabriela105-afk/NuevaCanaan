@@ -1,0 +1,198 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Años y trimestres{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Años escolares y trimestres</h1>
+      <p>Organice los periodos de evaluación del colegio.</p>
+    </div>
+  </div>
+
+  <form class="filters" method="get" action="{{ url_for('academic.years') }}">
+    <div class="field">
+      <label for="anio">Año escolar</label>
+      <select id="anio" name="anio">
+        {% for option in years %}
+          <option value="{{ option.id }}" {% if year and year.id == option.id %}selected{% endif %}>{{ option.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn--primary btn--sm" type="submit">Ver</button>
+  </form>
+
+  <form class="card" method="post">
+    {{ csrf_field() }}
+    <h2 class="card__title">Nuevo año escolar</h2>
+    <div class="form-grid">
+      <div class="field">
+        <label for="name">Nombre <span aria-hidden="true">*</span></label>
+        <input type="text" id="name" name="name" maxlength="40" required
+               placeholder="Ej.: 2027">
+        <span class="hint">Se recomienda usar el año calendario.</span>
+      </div>
+      <div class="field">
+        <label for="start_date">Inicio</label>
+        <input type="date" id="start_date" name="start_date">
+      </div>
+      <div class="field">
+        <label for="end_date">Cierre</label>
+        <input type="date" id="end_date" name="end_date">
+      </div>
+      <div class="field">
+        <label class="checkbox">
+          <input type="checkbox" name="is_active" value="1" checked>
+          Año escolar activo
+        </label>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">Crear año y trimestres</button>
+    </div>
+    <p class="small muted mb-0">
+      Al crear el año se generan automáticamente los tres trimestres para que
+      complete sus fechas.
+    </p>
+  </form>
+
+  {% if year %}
+    <form class="card" method="post" action="{{ url_for('academic.year_edit', year_id=year.id) }}">
+      {{ csrf_field() }}
+      <h2 class="card__title">Datos de {{ year.name }}</h2>
+      <div class="form-grid">
+        <div class="field">
+          <label for="year_name">Nombre</label>
+          <input type="text" id="year_name" name="name" value="{{ year.name }}" maxlength="40" required>
+        </div>
+        <div class="field">
+          <label for="year_start">Inicio</label>
+          <input type="date" id="year_start" name="start_date"
+                 value="{{ year.start_date.isoformat() if year.start_date else '' }}">
+        </div>
+        <div class="field">
+          <label for="year_end">Cierre</label>
+          <input type="date" id="year_end" name="end_date"
+                 value="{{ year.end_date.isoformat() if year.end_date else '' }}">
+        </div>
+        <div class="field">
+          <label class="checkbox">
+            <input type="checkbox" name="is_active" value="1" {% if year.is_active %}checked{% endif %}>
+            Año escolar activo
+          </label>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn--primary btn--sm" type="submit">Guardar cambios</button>
+      </div>
+    </form>
+
+    <section class="mt-2">
+      <div class="section__head">
+        <h2>Trimestres de {{ year.name }}</h2>
+      </div>
+      {% if trimesters %}
+        <div class="grid grid--2">
+          {% for trimester in trimesters %}
+            <div class="card">
+              <h3>
+                {{ trimester.label }}
+                {% if trimester.is_closed %}
+                  <span class="badge badge--muted">Cerrado</span>
+                {% elif trimester.is_current %}
+                  <span class="badge badge--success">En curso</span>
+                {% endif %}
+              </h3>
+              <form method="post" action="{{ url_for('academic.trimester_edit', trimester_id=trimester.id) }}">
+                {{ csrf_field() }}
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="number_{{ trimester.id }}">Número</label>
+                    <select id="number_{{ trimester.id }}" name="number">
+                      {% for n in (1, 2, 3) %}
+                        <option value="{{ n }}" {% if trimester.number == n %}selected{% endif %}>{{ n }}°</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="start_{{ trimester.id }}">Inicio</label>
+                    <input type="date" id="start_{{ trimester.id }}" name="start_date"
+                           value="{{ trimester.start_date.isoformat() if trimester.start_date else '' }}">
+                  </div>
+                  <div class="field">
+                    <label for="end_{{ trimester.id }}">Cierre</label>
+                    <input type="date" id="end_{{ trimester.id }}" name="end_date"
+                           value="{{ trimester.end_date.isoformat() if trimester.end_date else '' }}">
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button class="btn btn--primary btn--sm" type="submit">Guardar</button>
+                </div>
+              </form>
+              {% if current_user.role == 'admin' %}
+                <form method="post" action="{{ url_for('academic.trimester_toggle', trimester_id=trimester.id) }}"
+                      data-confirm="¿{{ 'Reabrir' if trimester.is_closed else 'Cerrar' }} el {{ trimester.label }}?">
+                  {{ csrf_field() }}
+                  <button class="btn btn--sm {{ 'btn--ghost' if trimester.is_closed else 'btn--danger' }}" type="submit">
+                    {{ 'Reabrir trimestre' if trimester.is_closed else 'Cerrar trimestre' }}
+                  </button>
+                </form>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="card empty-state">
+          <p class="mb-0">Este año no tiene trimestres registrados.</p>
+        </div>
+      {% endif %}
+    </section>
+
+    {% if current_user.role == 'admin' %}
+      <form class="card" method="post" action="{{ url_for('academic.trimester_create', year_id=year.id) }}">
+        {{ csrf_field() }}
+        <h2 class="card__title">Agregar trimestre</h2>
+        <div class="form-grid">
+          <div class="field">
+            <label for="new_number">Número</label>
+            <select id="new_number" name="number">
+              <option value="1">1°</option>
+              <option value="2">2°</option>
+              <option value="3">3°</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="new_start">Inicio</label>
+            <input type="date" id="new_start" name="start_date">
+          </div>
+          <div class="field">
+            <label for="new_end">Cierre</label>
+            <input type="date" id="new_end" name="end_date">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn--ghost btn--sm" type="submit">Agregar trimestre</button>
+        </div>
+      </form>
+
+      <form class="card" method="post" action="{{ url_for('academic.year_delete', year_id=year.id) }}"
+            data-confirm="¿Eliminar el año {{ year.name }} y sus trimestres vacíos?">
+        {{ csrf_field() }}
+        <h2 class="card__title">Zona sensible</h2>
+        <p class="small muted">
+          Sólo es posible eliminar un año sin calificaciones ni observaciones.
+          Para conservar el historial, desactívelo.
+        </p>
+        <button class="btn btn--danger btn--sm" type="submit">Eliminar año escolar</button>
+      </form>
+    {% endif %}
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin años escolares</h3>
+      <p class="mb-0">Cree el primer año escolar para comenzar a registrar notas.</p>
+    </div>
+  {% endif %}
+{% endblock %}
+

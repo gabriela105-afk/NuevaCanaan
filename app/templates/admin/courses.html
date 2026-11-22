@@ -1,0 +1,85 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Cursos{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Cursos</h1>
+      <p>Cursos, niveles y paralelos por año académico.</p>
+    </div>
+    <a class="btn btn--primary btn--sm" href="{{ url_for('admin.course_new') }}">Crear curso</a>
+  </div>
+
+  <form class="filters" method="get" action="{{ url_for('admin.courses') }}">
+    <div class="field">
+      <label for="anio">Año académico</label>
+      <select id="anio" name="anio">
+        <option value="">Todos los años</option>
+        {% for item in years %}
+          <option value="{{ item }}" {% if year == item|string %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.courses') }}">Limpiar</a>
+  </form>
+
+  {% if courses %}
+    <div class="table-wrap">
+      <table class="data">
+        <caption>{{ pagination.total }} curso(s)</caption>
+        <thead>
+          <tr>
+            <th scope="col">Curso</th>
+            <th scope="col">Nivel</th>
+            <th scope="col">Año</th>
+            <th scope="col">Estudiantes</th>
+            <th scope="col">Docentes</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for course in courses %}
+            <tr>
+              <td>{{ course.name }} {{ course.parallel }}</td>
+              <td>{{ course.level or '—' }}</td>
+              <td>{{ course.academic_year }}</td>
+              <td>{{ course.total_students }}</td>
+              <td>{{ course.teachers()|length }}</td>
+              <td>
+                <span class="badge {{ 'badge--success' if course.is_active else 'badge--muted' }}">
+                  {{ 'Activo' if course.is_active else 'Inactivo' }}
+                </span>
+              </td>
+              <td>
+                <div class="actions">
+                  <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.course_edit', course_id=course.id) }}">Editar</a>
+                  <form method="post" action="{{ url_for('admin.course_toggle', course_id=course.id) }}"
+                        data-confirm="¿{{ 'Desactivar' if course.is_active else 'Activar' }} el curso {{ course.label }}?">
+                    {{ csrf_field() }}
+                    <button class="btn btn--sm {{ 'btn--danger' if course.is_active else 'btn--ghost' }}" type="submit">
+                      {{ 'Desactivar' if course.is_active else 'Activar' }}
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% set endpoint = 'admin.courses' %}
+    {% set extra = {'anio': year} %}
+    {% include "partials/_pagination.html" with context %}
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin cursos registrados</h3>
+      <p class="mb-0">Cree los cursos del año académico para inscribir estudiantes.</p>
+      <a class="btn btn--primary btn--sm" href="{{ url_for('admin.course_new') }}">Crear curso</a>
+    </div>
+  {% endif %}
+{% endblock %}

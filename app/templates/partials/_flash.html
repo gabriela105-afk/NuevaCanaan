@@ -1,0 +1,18 @@
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-stack" role="status" aria-live="polite">
+      {% for category, message in messages %}
+        {% set level = 'info' %}
+        {% if category == 'success' %}{% set level = 'success' %}{% endif %}
+        {% if category in ('error', 'danger') %}{% set level = 'error' %}{% endif %}
+        {% if category == 'warning' %}{% set level = 'warning' %}{% endif %}
+        <div class="alert alert--{{ level }}">
+          <span class="alert__icon" aria-hidden="true">
+            {% if level == 'success' %}✓{% elif level == 'error' %}!{% elif level == 'warning' %}⚠{% else %}i{% endif %}
+          </span>
+          <span>{{ message }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}

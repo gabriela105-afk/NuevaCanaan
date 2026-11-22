@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Notificaciones{% endblock %}
+{% from "partials/_macros.html" import csrf_field, page_head %}
+
+{% block content %}
+  <section class="section">
+    <div class="container" style="max-width: 900px;">
+      {{ page_head('Notificaciones', 'Avisos internos generados por la institución.') }}
+
+      <div class="row row--between" style="margin-bottom: 1rem;">
+        <span class="small muted">
+          {{ unread_notifications }} notificación(es) sin leer de {{ pagination.total }} en total.
+        </span>
+        {% if unread_notifications %}
+          <form method="post" action="{{ url_for('messages.read_all_notifications') }}">
+            {{ csrf_field() }}
+            <button class="btn btn--ghost btn--sm" type="submit">Marcar todas como leídas</button>
+          </form>
+        {% endif %}
+      </div>
+
+      {% if notifications %}
+        <div class="stack">
+          {% for notification in notifications %}
+            <article class="card {{ 'card--accent' if not notification.is_read }}">
+              <div class="card__meta">
+                <span class="badge {{ 'badge--warning' if not notification.is_read else 'badge--muted' }}">
+                  {{ 'Sin leer' if not notification.is_read else 'Leída' }}
+                </span>
+                <span>{{ notification.created_at|datetime }}</span>
+                <span class="badge">{{ notification.category }}</span>
+              </div>
+              <h2 class="card__title">{{ notification.title }}</h2>
+              {% if notification.body %}<p class="card__body">{{ notification.body }}</p>{% endif %}
+              <div class="card__footer">
+                <span class="small muted">
+                  {% if notification.read_at %}Leída el {{ notification.read_at|datetime }}{% else %}Pendiente de lectura{% endif %}
+                </span>
+                <form method="post"
+                      action="{{ url_for('messages.read_notification', notification_id=notification.id) }}">
+                  {{ csrf_field() }}
+                  <button class="btn btn--primary btn--sm" type="submit">
+                    {{ 'Abrir' if notification.link else 'Marcar como leída' }}
+                  </button>
+                </form>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+        {% set endpoint = 'messages.notifications' %}
+        {% include "partials/_pagination.html" with context %}
+      {% else %}
+        <div class="card empty-state">
+          <h3>No tiene notificaciones</h3>
+          <p class="mb-0">Cuando la institución publique comunicados o mensajes aparecerán aquí.</p>
+        </div>
+      {% endif %}
+
+      <p class="mt-2"><a class="btn btn--ghost btn--sm" href="{{ url_for(current_user.dashboard_endpoint) }}">‹ Volver a mi panel</a></p>
+    </div>
+  </section>
+{% endblock %}

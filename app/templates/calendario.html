@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Calendario escolar{% endblock %}
+{% from "partials/_macros.html" import page_head %}
+
+{% block content %}
+  <section class="section">
+    <div class="container">
+      {{ page_head('Calendario escolar', 'Reuniones, evaluaciones, actos cívicos y actividades institucionales.') }}
+
+      <div class="calendar-head">
+        <div class="row">
+          <a class="btn btn--ghost btn--sm"
+             href="{{ url_for('main.calendario', anio=previous_month.year, mes=previous_month.month) }}"
+             rel="prev">‹ Mes anterior</a>
+          <a class="btn btn--ghost btn--sm"
+             href="{{ url_for('main.calendario', anio=next_month.year, mes=next_month.month) }}"
+             rel="next">Mes siguiente ›</a>
+        </div>
+        <h2 class="mb-0">{{ month_name }}</h2>
+      </div>
+
+      <div class="table-wrap">
+        <table class="calendar" aria-label="Calendario de {{ month_name }}">
+          <thead>
+            <tr>
+              <th scope="col">Lun</th><th scope="col">Mar</th><th scope="col">Mié</th>
+              <th scope="col">Jue</th><th scope="col">Vie</th><th scope="col">Sáb</th>
+              <th scope="col">Dom</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for week in weeks %}
+              <tr>
+                {% for day in week %}
+                  <td class="{{ 'is-outside' if not day.in_month }} {{ 'is-today' if day.is_today }}">
+                    <span class="calendar__day">{{ day.date.day }}</span>
+                    {% for event in day.events %}
+                      <span class="calendar__event {{ 'calendar__event--internal' if event.audience == 'internal' }}"
+                            title="{{ event.title }}">
+                        {{ event.time_label }} {{ event.title }}
+                      </span>
+                    {% endfor %}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="legend">
+        <span>Evento público</span>
+        <span class="legend--internal">Evento visible sólo con sesión iniciada</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt">
+    <div class="container grid grid--2">
+      <div>
+        <h2>Actividades del mes</h2>
+        {% if month_events %}
+          <ul class="timeline">
+            {% for event in month_events %}
+              <li>
+                <span class="timeline__date">
+                  <span class="timeline__day">{{ event.start_date.day }}</span>
+                  <span class="timeline__month">{{ event.start_date|date('%b') }}</span>
+                </span>
+                <div class="timeline__body">
+                  <h4>{{ event.title }}</h4>
+                  <p>
+                    {{ event.category_label }}
+                    {% if event.time_label %} · {{ event.time_label }}{% endif %}
+                    {% if event.location %} · {{ event.location }}{% endif %}
+                  </p>
+                  {% if event.description %}<p>{{ event.description }}</p>{% endif %}
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="card empty-state">
+            <p class="mb-0">No hay actividades registradas para este mes.</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <div>
+        <h2>Próximamente</h2>
+        {% if upcoming %}
+          <ul class="timeline">
+            {% for event in upcoming %}
+              <li>
+                <span class="timeline__date">
+                  <span class="timeline__day">{{ event.start_date.day }}</span>
+                  <span class="timeline__month">{{ event.start_date|shortdate }}</span>
+                </span>
+                <div class="timeline__body">
+                  <h4>{{ event.title }}</h4>
+                  <p>{{ event.category_label }}{% if event.location %} · {{ event.location }}{% endif %}</p>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="card empty-state">
+            <p class="mb-0">Aún no se han publicado próximas actividades.</p>
+          </div>
+        {% endif %}
+        <p class="small muted">
+          Las fechas pueden ser modificadas por la institución. Consulte esta página
+          periódicamente para confirmar la información.
+        </p>
+      </div>
+    </div>
+  </section>
+{% endblock %}

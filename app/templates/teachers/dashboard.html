@@ -1,0 +1,111 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Panel docente{% endblock %}
+
+{% block sidebar %}{% include "partials/_sidebar_teachers.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Panel docente</h1>
+      <p>{{ current_user.full_name }}{% if profile.specialty %} · {{ profile.specialty }}{% endif %}</p>
+    </div>
+    <a class="btn btn--accent btn--sm" href="{{ url_for('teachers.announcement_new') }}">Publicar aviso</a>
+  </div>
+
+  <div class="grid grid--3">
+    <div class="stat">
+      <div class="stat__value">{{ courses|length }}</div>
+      <div class="stat__label">Cursos asignados</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value">{{ assignments|length }}</div>
+      <div class="stat__label">Tareas y evaluaciones registradas</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value">{{ unread_messages }}</div>
+      <div class="stat__label">Mensajes sin leer</div>
+    </div>
+  </div>
+
+  <section class="mt-2">
+    <h2>Mis cursos</h2>
+    {% if courses %}
+      <div class="grid grid--2">
+        {% for course in courses %}
+          <article class="card">
+            <h3 class="card__title">{{ course.label }}</h3>
+            <p class="small muted">
+              {{ course.total_students }} estudiante(s) activos
+              {% if course.description %} · {{ course.description }}{% endif %}
+            </p>
+            <div class="row">
+              <a class="btn btn--primary btn--sm"
+                 href="{{ url_for('teachers.course_detail', course_id=course.id) }}">Abrir curso</a>
+              <a class="btn btn--ghost btn--sm"
+                 href="{{ url_for('teachers.attendance', course_id=course.id) }}">Asistencia</a>
+              <a class="btn btn--ghost btn--sm"
+                 href="{{ url_for('teachers.grades', course_id=course.id) }}">Notas</a>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="card empty-state">
+        <h3>Sin cursos asignados</h3>
+        <p class="mb-0">
+          La administración debe asignarle cursos para registrar tareas, asistencia y
+          calificaciones.
+        </p>
+      </div>
+    {% endif %}
+  </section>
+
+  <div class="grid grid--2 mt-2">
+    <section>
+      <h2>Actividades recientes</h2>
+      {% if assignments %}
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr><th scope="col">Título</th><th scope="col">Curso</th><th scope="col">Entrega</th><th scope="col">Tipo</th></tr>
+            </thead>
+            <tbody>
+              {% for item in assignments %}
+                <tr>
+                  <td>{{ item.title }}</td>
+                  <td>{{ item.course.label if item.course else '—' }}</td>
+                  <td>{{ item.due_date|date if item.due_date else 'Sin fecha' }}</td>
+                  <td><span class="badge">{{ item.kind_label }}</span></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="card empty-state"><p class="mb-0">Aún no registró tareas ni evaluaciones.</p></div>
+      {% endif %}
+    </section>
+
+    <section>
+      <h2>Próximas actividades institucionales</h2>
+      {% if events %}
+        <ul class="timeline">
+          {% for event in events %}
+            <li>
+              <span class="timeline__date">
+                <span class="timeline__day">{{ event.start_date.day }}</span>
+                <span class="timeline__month">{{ event.start_date|date('%b') }}</span>
+              </span>
+              <div class="timeline__body">
+                <h4>{{ event.title }}</h4>
+                <p>{{ event.category_label }}{% if event.location %} · {{ event.location }}{% endif %}</p>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="card empty-state"><p class="mb-0">Sin actividades próximas.</p></div>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Formulario de contacto{% endblock %}
+{% from "partials/_macros.html" import csrf_field, page_head %}
+
+{% block content %}
+  <section class="section">
+    <div class="container">
+      {{ page_head('Contacto institucional', 'Envíe su consulta a la institución. Los mensajes son revisados por la dirección y la administración.') }}
+
+      <div class="grid grid--2">
+        <form class="card" method="post" action="{{ url_for('main.contacto') }}" novalidate>
+          {{ csrf_field() }}
+          <div class="form-grid">
+            <div class="field">
+              <label for="name">Nombre completo <span aria-hidden="true">*</span></label>
+              <input type="text" id="name" name="name" value="{{ form.name }}" required maxlength="120"
+                     autocomplete="name">
+            </div>
+            <div class="field">
+              <label for="email">Correo electrónico</label>
+              <input type="email" id="email" name="email" value="{{ form.email }}" maxlength="180"
+                     autocomplete="email">
+              <span class="hint">Opcional, pero permite responder su consulta.</span>
+            </div>
+            <div class="field">
+              <label for="phone">Teléfono de contacto</label>
+              <input type="tel" id="phone" name="phone" value="{{ form.phone }}" maxlength="40"
+                     autocomplete="tel">
+            </div>
+            <div class="field">
+              <label for="subject">Asunto <span aria-hidden="true">*</span></label>
+              <input type="text" id="subject" name="subject" value="{{ form.subject }}" required maxlength="160">
+            </div>
+            <div class="field field--full">
+              <label for="body">Mensaje <span aria-hidden="true">*</span></label>
+              <textarea id="body" name="body" rows="7" required maxlength="3000"
+                        data-counter="body-counter">{{ form.body }}</textarea>
+              <span class="hint" id="body-counter"></span>
+            </div>
+            {# Campo trampa antispam: debe permanecer vacío #}
+            <div class="hidden" aria-hidden="true">
+              <label for="website">No completar este campo</label>
+              <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit">Enviar mensaje</button>
+            <a class="btn btn--ghost" href="{{ url_for('main.index') }}">Cancelar</a>
+          </div>
+          <p class="small muted mt-2 mb-0">
+            Los campos marcados con <span aria-hidden="true">*</span> son obligatorios.
+            No utilice este formulario para enviar información sensible de estudiantes.
+          </p>
+        </form>
+
+        <div class="stack">
+          <div class="card card--accent">
+            <h2 class="card__title">Datos de contacto</h2>
+            <ul class="stack small">
+              <li><strong>Dirección:</strong> {{ institution.direccion or 'Información pendiente de actualización' }}</li>
+              <li><strong>Teléfono:</strong> {{ institution.telefono or 'Información pendiente de actualización' }}</li>
+              <li><strong>Teléfono alterno:</strong> {{ institution.telefono_alterno or 'No registrado' }}</li>
+              <li><strong>Correo:</strong> {{ institution.correo or 'Información pendiente de actualización' }}</li>
+              <li><strong>Horario de atención:</strong> {{ institution.horario_atencion or 'Información pendiente de actualización' }}</li>
+            </ul>
+            {% if institution.facebook or institution.instagram %}
+              <hr class="divider">
+              <p class="small mb-0">
+                {% if institution.facebook %}<a href="{{ institution.facebook }}" rel="noopener noreferrer" target="_blank">Facebook institucional</a>{% endif %}
+                {% if institution.facebook and institution.instagram %} · {% endif %}
+                {% if institution.instagram %}<a href="{{ institution.instagram }}" rel="noopener noreferrer" target="_blank">Instagram institucional</a>{% endif %}
+              </p>
+            {% endif %}
+          </div>
+
+          <div class="notice">
+            <strong>Privacidad:</strong> {{ institution.nota_privacidad }}
+          </div>
+
+          <div class="card">
+            <h2 class="card__title">¿Es una consulta académica?</h2>
+            <p class="small">
+              Si ya cuenta con acceso a la plataforma, utilice el módulo de mensajes internos
+              para comunicarse con la dirección. Las familias sólo visualizan información de
+              sus propios hijos.
+            </p>
+            <a class="btn btn--ghost btn--sm" href="{{ url_for('auth.login') }}">Iniciar sesión</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

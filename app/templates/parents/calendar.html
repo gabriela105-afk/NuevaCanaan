@@ -1,0 +1,56 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Calendario{% endblock %}
+
+{% block sidebar %}{% include "partials/_sidebar_parents.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Calendario escolar</h1>
+      <p>Actividades públicas y eventos internos de los cursos de sus hijos.</p>
+    </div>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('main.calendario') }}">Ver calendario público</a>
+  </div>
+
+  {% if upcoming %}
+    <div class="table-wrap">
+      <table class="data">
+        <caption>Próximas actividades registradas</caption>
+        <thead>
+          <tr>
+            <th scope="col">Fecha</th>
+            <th scope="col">Hora</th>
+            <th scope="col">Actividad</th>
+            <th scope="col">Categoría</th>
+            <th scope="col">Lugar</th>
+            <th scope="col">Público</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for event in upcoming %}
+            <tr>
+              <td>{{ event.start_date|date }}</td>
+              <td>{{ event.time_label or '—' }}</td>
+              <td>
+                <strong>{{ event.title }}</strong>
+                {% if event.description %}<br><span class="small muted">{{ event.description|truncate(90) }}</span>{% endif %}
+              </td>
+              <td><span class="badge">{{ event.category_label }}</span></td>
+              <td>{{ event.location or '—' }}</td>
+              <td>{{ event.audience_label }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin actividades programadas</h3>
+      <p class="mb-0">La institución aún no registró actividades para los próximos meses.</p>
+    </div>
+  {% endif %}
+
+  <p class="small muted mt-2 mb-0">
+    Última consulta: {{ generated_at|datetime }}. Las fechas pueden ser modificadas por la institución.
+  </p>
+{% endblock %}

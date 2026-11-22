@@ -1,0 +1,93 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Gestión académica{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Gestión académica</h1>
+      <p>Materias, trimestres, calificaciones y observaciones del colegio.</p>
+    </div>
+    {% if current_user.role == 'admin' %}
+      <a class="btn btn--primary btn--sm" href="{{ url_for('academic.config') }}">
+        Configurar escala
+      </a>
+    {% endif %}
+  </div>
+
+  {% if not config.is_configured %}
+    <div class="alert alert--warning">
+      <strong>Falta configurar la escala de calificación.</strong>
+      Sin una escala institucional no es posible registrar notas ni mostrar si un
+      estudiante aprueba o reprueba.
+      {% if current_user.role == 'admin' %}
+        <a href="{{ url_for('academic.config') }}">Configurarla ahora</a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <div class="grid grid--4">
+    <div class="stat"><span class="stat__value">{{ stats.years }}</span><span class="stat__label">Años escolares</span></div>
+    <div class="stat"><span class="stat__value">{{ stats.trimesters }}</span><span class="stat__label">Trimestres</span></div>
+    <div class="stat"><span class="stat__value">{{ stats.subjects }}</span><span class="stat__label">Materias activas</span></div>
+    <div class="stat"><span class="stat__value">{{ stats.assignments }}</span><span class="stat__label">Materias asignadas</span></div>
+    <div class="stat"><span class="stat__value">{{ stats.grades }}</span><span class="stat__label">Notas registradas</span></div>
+    <div class="stat"><span class="stat__value">{{ stats.observations }}</span><span class="stat__label">Observaciones</span></div>
+  </div>
+
+  <section class="card">
+    <h2 class="card__title">Accesos rápidos</h2>
+    <div class="actions">
+      <a class="btn btn--primary btn--sm" href="{{ url_for('academic.years') }}">Años y trimestres</a>
+      <a class="btn btn--ghost btn--sm" href="{{ url_for('academic.subjects') }}">Materias</a>
+      <a class="btn btn--ghost btn--sm" href="{{ url_for('academic.assignments') }}">Asignar materias</a>
+      <a class="btn btn--ghost btn--sm" href="{{ url_for('academic.grades') }}">Registrar notas</a>
+      <a class="btn btn--ghost btn--sm" href="{{ url_for('academic.observations') }}">Observaciones</a>
+      <a class="btn btn--ghost btn--sm" href="{{ url_for('academic.history') }}">Historial de cambios</a>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 class="card__title">Escala vigente</h2>
+    <p class="mb-0">
+      {{ config.scale_label }}
+      {% if not config.is_configured %}(sin escala definida){% endif %}
+    </p>
+  </section>
+
+  <section class="card">
+    <h2 class="card__title">Últimos cambios de notas</h2>
+    {% if recent_changes %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Estudiante</th>
+              <th>Materia</th>
+              <th>Anterior</th>
+              <th>Nueva</th>
+              <th>Motivo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for change in recent_changes %}
+              <tr>
+                <td>{{ change.created_at|datetime }}</td>
+                <td>{{ change.student.full_name if change.student else '—' }}</td>
+                <td>{{ change.course_subject.subject.name if change.course_subject and change.course_subject.subject else '—' }}</td>
+                <td>{{ config.format(change.previous_score) }}</td>
+                <td>{{ config.format(change.new_score) }}</td>
+                <td>{{ change.reason or '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted mb-0">Todavía no se han modificado calificaciones.</p>
+    {% endif %}
+  </section>
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Comentarios de noticias{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Comentarios del muro</h1>
+      <p>Revise los comentarios del público. Puede ocultarlos temporalmente o eliminarlos si no respetan las normas de convivencia.</p>
+    </div>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('news_admin.posts') }}">Volver a las noticias</a>
+  </div>
+
+  <div class="grid grid--2">
+    <div class="stat">
+      <div class="stat__value">{{ total_visible }}</div>
+      <div class="stat__label">Comentarios visibles en el muro</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value">{{ total_hidden }}</div>
+      <div class="stat__label">Comentarios ocultos</div>
+    </div>
+  </div>
+
+  <form class="filters mt-2" method="get" action="{{ url_for('news_admin.comments') }}">
+    <div class="field">
+      <label for="estado">Estado</label>
+      <select id="estado" name="estado">
+        <option value="">Todos</option>
+        {% for item in statuses %}
+          <option value="{{ item }}" {% if item == status %}selected{% endif %}>
+            {{ NEWS_COMMENT_STATUS_LABELS.get(item, item) }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('news_admin.comments') }}">Limpiar</a>
+  </form>
+
+  {% if comments %}
+    <div class="table-wrap">
+      <table class="data">
+        <caption>{{ pagination.total }} comentario(s)</caption>
+        <thead>
+          <tr>
+            <th scope="col">Autor</th>
+            <th scope="col">Comentario</th>
+            <th scope="col">Publicación</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for comment in comments %}
+            <tr>
+              <td>
+                {{ comment.author_name|truncate(40) }}
+                <br><span class="small muted">{{ comment.created_at|newsdate }}</span>
+              </td>
+              <td>
+                <span class="small">{{ comment.body|truncate(140) }}</span>
+                {% if comment.user %}
+                  <br><span class="small muted">Usuario registrado: {{ comment.user.email }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if comment.post %}
+                  <a href="{{ url_for('news.detail', post_id=comment.post.id) }}">{{ comment.post.title|truncate(42) }}</a>
+                  <br><span class="small muted">{{ comment.post.category_label }}</span>
+                {% else %}
+                  <span class="small muted">Publicación eliminada</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge {{ 'badge--success' if comment.status == 'approved' else 'badge--muted' }}">
+                  {{ comment.status_label }}
+                </span>
+              </td>
+              <td>
+                <div class="actions">
+                  <form method="post" action="{{ url_for('news_admin.comment_toggle', comment_id=comment.id) }}"
+                        data-confirm="¿{{ 'Ocultar' if comment.status == 'approved' else 'Mostrar' }} este comentario?">
+                    {{ csrf_field() }}
+                    <button class="btn btn--ghost btn--sm" type="submit">
+                      {{ 'Ocultar' if comment.status == 'approved' else 'Mostrar' }}
+                    </button>
+                  </form>
+                  <form method="post" action="{{ url_for('news_admin.comment_delete', comment_id=comment.id) }}"
+                        data-confirm="¿Eliminar definitivamente este comentario?">
+                    {{ csrf_field() }}
+                    <button class="btn btn--danger btn--sm" type="submit">Eliminar</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% set endpoint = 'news_admin.comments' %}
+    {% set extra = {'estado': status} %}
+    {% include "partials/_pagination.html" with context %}
+  {% else %}
+    <div class="card empty-state mt-2">
+      <h3>Sin comentarios</h3>
+      <p class="mb-0">Los comentarios que envíe el público aparecerán en esta bandeja.</p>
+    </div>
+  {% endif %}
+{% endblock %}

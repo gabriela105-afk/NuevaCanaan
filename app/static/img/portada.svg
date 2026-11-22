@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="tituloPortada">
+  <title id="tituloPortada">Fotografía institucional pendiente de reemplazo</title>
+  <!--
+    IMAGEN PROVISORIA.
+    Reemplace este archivo por una fotografía institucional optimizada
+    (JPG/WEBP, idealmente 1600x900 px y menos de 300 KB) con el mismo
+    nombre, o configure la variable INSTITUTION_COVER.
+  -->
+  <defs>
+    <linearGradient id="fondo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a2b42"/>
+      <stop offset="55%" stop-color="#12507a"/>
+      <stop offset="100%" stop-color="#1f7a5a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#fondo)"/>
+  <g fill="#ffffff" opacity="0.08">
+    <rect x="120" y="520" width="360" height="220" rx="12"/>
+    <rect x="540" y="440" width="420" height="300" rx="12"/>
+    <rect x="1020" y="500" width="380" height="240" rx="12"/>
+  </g>
+  <text x="120" y="240" font-family="Segoe UI, Arial, sans-serif" font-size="46"
+        font-weight="700" fill="#ffffff" opacity="0.9">Colegio Técnico Humanístico</text>
+  <text x="120" y="300" font-family="Segoe UI, Arial, sans-serif" font-size="46"
+        font-weight="700" fill="#c9a227">Nueva Canaán</text>
+  <text x="120" y="360" font-family="Segoe UI, Arial, sans-serif" font-size="22"
+        fill="#dbe9f2" opacity="0.85">Fotografía institucional pendiente de reemplazo</text>
+</svg>

@@ -1,0 +1,52 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Escala de calificación{% endblock %}
+{% from "partials/_macros.html" import csrf_field, input %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Escala de calificación</h1>
+      <p>Defina los valores que utiliza la institución para evaluar a los estudiantes.</p>
+    </div>
+  </div>
+
+  {% if not config.is_configured %}
+    <div class="alert alert--warning">
+      La plataforma no asume ninguna escala. Complete los valores según el
+      reglamento de evaluación del colegio.
+    </div>
+  {% endif %}
+
+  <form class="card" method="post">
+    {{ csrf_field() }}
+    <h2 class="card__title">Escala institucional</h2>
+    <div class="form-grid">
+      {{ input('min_score', 'Nota mínima', config.min_score if config.min_score is not none else '', type='number', step='0.01', required=True) }}
+      {{ input('max_score', 'Nota máxima', config.max_score if config.max_score is not none else '', type='number', step='0.01', required=True) }}
+      {{ input('passing_score', 'Nota de aprobación', config.passing_score if config.passing_score is not none else '', type='number', step='0.01', required=True) }}
+      {{ input('decimals', 'Decimales a mostrar', config.decimals or 0, type='number', step='1', required=True,
+               hint='Entre 0 y 3 decimales.') }}
+    </div>
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">Guardar escala</button>
+    </div>
+    <p class="small muted mb-0">
+      Ejemplo: si el colegio evalúa de 0 a 20 y aprueba desde 10, registre
+      mínimo 0, máximo 20 y aprobación 10. Cada vez que cambie la escala, el
+      cambio se guarda en auditoría.
+    </p>
+  </form>
+
+  <section class="card">
+    <h2 class="card__title">Vista previa</h2>
+    <p class="mb-0">{{ config.scale_label }}</p>
+    {% if config.updated_by_user %}
+      <p class="small muted mb-0">
+        Última actualización: {{ config.updated_at|datetime }}
+        por {{ config.updated_by_user.full_name }}.
+      </p>
+    {% endif %}
+  </section>
+{% endblock %}

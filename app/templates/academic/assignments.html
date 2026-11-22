@@ -1,0 +1,118 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Asignar materias{% endblock %}
+{% from "partials/_macros.html" import csrf_field, select %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Materias por curso</h1>
+      <p>Asigne cada materia al curso y al docente responsable.</p>
+    </div>
+  </div>
+
+  <form class="card" method="post">
+    {{ csrf_field() }}
+    <h2 class="card__title">Asignar materia</h2>
+    <div class="form-grid">
+      {{ select('course_id', 'Curso', courses, required=True, blank='Seleccione un curso') }}
+      {{ select('subject_id', 'Materia', subjects, required=True, blank='Seleccione una materia') }}
+      {{ select('teacher_id', 'Docente', teachers, blank='Sin asignar') }}
+      <div class="field">
+        <label for="weekly_hours">Horas semanales</label>
+        <input type="number" id="weekly_hours" name="weekly_hours" min="0" max="40" step="1">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">Guardar asignación</button>
+    </div>
+    <p class="small muted mb-0">
+      Si la materia ya está asignada al curso, se actualizará el docente y la
+      carga horaria.
+    </p>
+  </form>
+
+  <form class="filters" method="get" action="{{ url_for('academic.assignments') }}">
+    <div class="field">
+      <label for="curso">Filtrar por curso</label>
+      <select id="curso" name="curso">
+        <option value="">Todos los cursos</option>
+        {% for value, label in courses %}
+          <option value="{{ value }}" {% if selected_course and selected_course.id == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('academic.assignments') }}">Limpiar</a>
+  </form>
+
+  {% if links %}
+    <div class="table-wrap">
+      <table class="data">
+        <caption>{{ links|length }} asignación(es)</caption>
+        <thead>
+          <tr>
+            <th>Curso</th>
+            <th>Materia</th>
+            <th>Docente</th>
+            <th>Horas</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for link in links %}
+            <tr>
+              <td>{{ link.course.label if link.course else '—' }}</td>
+              <td>
+                <form id="link_{{ link.id }}" method="post"
+                      action="{{ url_for('academic.assignment_edit', link_id=link.id) }}">
+                  {{ csrf_field() }}
+                </form>
+                {{ link.subject.name if link.subject else '—' }}
+              </td>
+              <td>
+                <select form="link_{{ link.id }}" name="teacher_id" aria-label="Docente">
+                  <option value="">Sin asignar</option>
+                  {% for value, label in teachers %}
+                    <option value="{{ value }}" {% if link.teacher_id == value %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td>
+                <input form="link_{{ link.id }}" type="number" name="weekly_hours" min="0" max="40"
+                       value="{{ link.weekly_hours if link.weekly_hours is not none else '' }}"
+                       aria-label="Horas semanales">
+              </td>
+              <td>
+                <label class="checkbox">
+                  <input form="link_{{ link.id }}" type="checkbox" name="is_active" value="1"
+                         {% if link.is_active %}checked{% endif %}>
+                  Activa
+                </label>
+              </td>
+              <td>
+                <div class="actions">
+                  <button form="link_{{ link.id }}" class="btn btn--primary btn--sm" type="submit">Guardar</button>
+                  {% if current_user.role == 'admin' %}
+                    <form method="post" action="{{ url_for('academic.assignment_delete', link_id=link.id) }}"
+                          data-confirm="¿Quitar la materia del curso?">
+                      {{ csrf_field() }}
+                      <button class="btn btn--danger btn--sm" type="submit">Quitar</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin asignaciones</h3>
+      <p class="mb-0">Asigne materias a los cursos para poder registrar notas.</p>
+    </div>
+  {% endif %}
+{% endblock %}

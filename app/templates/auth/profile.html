@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Mi perfil{% endblock %}
+{% from "partials/_macros.html" import csrf_field, page_head %}
+
+{% block content %}
+  <section class="section">
+    <div class="container" style="max-width: 720px;">
+      {{ page_head('Mi perfil', 'Actualice sus datos personales de contacto.') }}
+
+      <div class="card">
+        <div class="row" style="gap: 1rem;">
+          <span class="avatar avatar--lg">{{ current_user.full_name|initials }}</span>
+          <div>
+            <h2 class="mb-0">{{ current_user.full_name }}</h2>
+            <p class="small muted mb-0">{{ current_user.email }} · {{ current_user.role_label }}</p>
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <form method="post" action="{{ url_for('auth.profile') }}" novalidate>
+          {{ csrf_field() }}
+          <div class="form-grid">
+            <div class="field field--full">
+              <label for="full_name">Nombre completo</label>
+              <input type="text" id="full_name" name="full_name" value="{{ current_user.full_name }}"
+                     required maxlength="160" autocomplete="name">
+            </div>
+            <div class="field">
+              <label for="email">Correo electrónico</label>
+              <input type="email" id="email" value="{{ current_user.email }}" disabled>
+              <span class="hint">Para modificar el correo, comuníquese con la administración.</span>
+            </div>
+            <div class="field">
+              <label for="phone">Teléfono</label>
+              <input type="tel" id="phone" name="phone" value="{{ current_user.phone or '' }}"
+                     maxlength="40" autocomplete="tel">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit">Guardar cambios</button>
+            <a class="btn btn--ghost" href="{{ url_for('auth.change_password') }}">Cambiar contraseña</a>
+          </div>
+        </form>
+      </div>
+
+      <div class="card mt-2">
+        <h2 class="card__title">Seguridad de la cuenta</h2>
+        <ul class="small muted">
+          <li>Último ingreso: {{ current_user.last_login_at|datetime if current_user.last_login_at else 'No registrado' }}</li>
+          <li>Intentos fallidos acumulados: {{ current_user.failed_login_attempts }}</li>
+          <li>Estado de la cuenta: {{ 'Activa' if current_user.is_active else 'Inactiva' }}</li>
+        </ul>
+        {% if current_user.must_change_password %}
+          <div class="notice">
+            La administración solicitó que actualice su contraseña.
+            <a href="{{ url_for('auth.change_password') }}">Cambiar ahora</a>.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+{% endblock %}

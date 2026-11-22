@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Acceso no autorizado{% endblock %}
+{% block content %}
+  <section class="section">
+    <div class="container" style="max-width: 640px;">
+      <div class="card text-center">
+        <h1>Acceso no autorizado</h1>
+        <p class="muted">
+          Su cuenta no tiene permisos para consultar esta sección. Si considera que se
+          trata de un error, comuníquese con la administración de la institución.
+        </p>
+        <div class="form-actions" style="justify-content: center;">
+          {% if current_user.is_authenticated %}
+            <a class="btn btn--primary" href="{{ url_for(current_user.dashboard_endpoint) }}">Ir a mi panel</a>
+          {% else %}
+            <a class="btn btn--primary" href="{{ url_for('auth.login') }}">Iniciar sesión</a>
+          {% endif %}
+          <a class="btn btn--ghost" href="{{ url_for('main.index') }}">Volver al inicio</a>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

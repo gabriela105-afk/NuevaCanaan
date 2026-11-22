@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Mensajes internos{% endblock %}
+{% from "partials/_macros.html" import page_head %}
+
+{% block content %}
+  <section class="section">
+    <div class="container" style="max-width: 960px;">
+      {{ page_head('Mensajes internos', 'Comunicación directa dentro de la plataforma institucional.') }}
+
+      <div class="row row--between" style="margin-bottom: 1rem;">
+        <div class="row">
+          <a class="btn btn--sm {{ 'btn--primary' if view == 'recibidos' else 'btn--ghost' }}"
+             href="{{ url_for('messages.inbox', vista='recibidos') }}">Recibidos</a>
+          <a class="btn btn--sm {{ 'btn--primary' if view == 'enviados' else 'btn--ghost' }}"
+             href="{{ url_for('messages.inbox', vista='enviados') }}">Enviados</a>
+        </div>
+        <a class="btn btn--accent btn--sm" href="{{ url_for('messages.compose') }}">Redactar mensaje</a>
+      </div>
+
+      {% if messages %}
+        <div class="table-wrap">
+          <table class="data">
+            <caption>{{ 'Mensajes recibidos' if view == 'recibidos' else 'Mensajes enviados' }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Asunto</th>
+                <th scope="col">{{ 'De' if view == 'recibidos' else 'Para' }}</th>
+                <th scope="col">Fecha</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for message in messages %}
+                <tr>
+                  <td><strong>{{ message.subject }}</strong></td>
+                  <td>
+                    {{ message.sender.full_name if view == 'recibidos' and message.sender else '' }}
+                    {{ message.recipient.full_name if view == 'enviados' and message.recipient else '' }}
+                  </td>
+                  <td>{{ message.created_at|datetime }}</td>
+                  <td>
+                    {% if view == 'recibidos' %}
+                      <span class="badge {{ 'badge--warning' if not message.is_read else 'badge--muted' }}">
+                        {{ 'Sin leer' if not message.is_read else 'Leído' }}
+                      </span>
+                    {% else %}
+                      <span class="badge badge--muted">Enviado</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <a class="btn btn--ghost btn--sm"
+                       href="{{ url_for('messages.detail', message_id=message.id) }}">Abrir</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% set endpoint = 'messages.inbox' %}
+        {% set extra = {'vista': view} %}
+        {% include "partials/_pagination.html" with context %}
+      {% else %}
+        <div class="card empty-state">
+          <h3>No hay mensajes</h3>
+          <p>Puede iniciar una conversación con la dirección de la institución.</p>
+          <a class="btn btn--primary btn--sm" href="{{ url_for('messages.compose') }}">Redactar mensaje</a>
+        </div>
+      {% endif %}
+
+      <p class="mt-2"><a class="btn btn--ghost btn--sm" href="{{ url_for(current_user.dashboard_endpoint) }}">‹ Volver a mi panel</a></p>
+    </div>
+  </section>
+{% endblock %}

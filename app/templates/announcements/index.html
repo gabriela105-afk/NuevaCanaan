@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Comunicados oficiales{% endblock %}
+{% from "partials/_macros.html" import page_head %}
+
+{% block content %}
+  <section class="section">
+    <div class="container">
+      {{ page_head('Comunicados oficiales', 'Avisos autorizados para difusión general por la institución.') }}
+
+      <form class="filters" method="get" action="{{ url_for('announcements.index') }}">
+        <div class="field">
+          <label for="categoria">Categoría</label>
+          <select id="categoria" name="categoria">
+            <option value="">Todas las categorías</option>
+            {% for item in categories %}
+              <option value="{{ item }}" {% if item == category %}selected{% endif %}>
+                {{ ANNOUNCEMENT_CATEGORY_LABELS.get(item, item) }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
+        {% if category %}
+          <a class="btn btn--ghost btn--sm" href="{{ url_for('announcements.index') }}">Limpiar</a>
+        {% endif %}
+      </form>
+
+      {% if announcements %}
+        <div class="grid grid--2">
+          {% for announcement in announcements %}
+            <article class="card {{ 'card--pinned' if announcement.is_pinned }}">
+              <div class="card__meta">
+                {% if announcement.is_pinned %}<span class="badge badge--gold">Fijado</span>{% endif %}
+                <span class="badge badge--{{ announcement.priority }}">{{ announcement.priority_label }}</span>
+                <span class="badge">{{ announcement.category_label }}</span>
+                <span>{{ announcement.published_at|longdate }}</span>
+              </div>
+              <h2 class="card__title">
+                <a href="{{ url_for('announcements.detail', announcement_id=announcement.id) }}">{{ announcement.title }}</a>
+              </h2>
+              <p class="card__body">{{ announcement.summary or announcement.body|truncate(220) }}</p>
+              <div class="card__footer">
+                <span class="small muted">
+                  {{ announcement.author.full_name if announcement.author else 'Dirección institucional' }}
+                </span>
+                <a class="btn btn--ghost btn--sm"
+                   href="{{ url_for('announcements.detail', announcement_id=announcement.id) }}">Leer completo</a>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+
+        {% set endpoint = 'announcements.index' %}
+        {% set extra = {'categoria': category} if category else {} %}
+        {% include "partials/_pagination.html" with context %}
+      {% else %}
+        <div class="card empty-state">
+          <h3>No hay comunicados disponibles</h3>
+          <p class="mb-0">
+            {% if category %}
+              No existen comunicados publicados en la categoría seleccionada.
+            {% else %}
+              La institución aún no ha publicado comunicados para difusión general.
+            {% endif %}
+          </p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

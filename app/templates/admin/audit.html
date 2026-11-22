@@ -1,0 +1,67 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}Auditoría{% endblock %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <div class="page-head">
+    <div>
+      <h1>Registro de actividad</h1>
+      <p>Acciones administrativas relevantes. No se almacenan contraseñas ni datos sensibles.</p>
+    </div>
+  </div>
+
+  <form class="filters" method="get" action="{{ url_for('admin.audit') }}">
+    <div class="field">
+      <label for="accion">Acción</label>
+      <select id="accion" name="accion">
+        <option value="">Todas las acciones</option>
+        {% for item in actions %}
+          <option value="{{ item }}" {% if item == action %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
+    <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.audit') }}">Limpiar</a>
+  </form>
+
+  {% if logs %}
+    <div class="table-wrap">
+      <table class="data">
+        <caption>{{ pagination.total }} registro(s)</caption>
+        <thead>
+          <tr>
+            <th scope="col">Fecha</th>
+            <th scope="col">Usuario</th>
+            <th scope="col">Acción</th>
+            <th scope="col">Entidad</th>
+            <th scope="col">Detalle</th>
+            <th scope="col">IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+            <tr>
+              <td>{{ log.created_at|datetime }}</td>
+              <td>{{ log.actor_name or 'Sistema' }}</td>
+              <td><span class="badge">{{ log.action }}</span></td>
+              <td>
+                {% if log.entity %}{{ log.entity }}{% if log.entity_id %} #{{ log.entity_id }}{% endif %}{% else %}—{% endif %}
+              </td>
+              <td>{{ log.details or '—' }}</td>
+              <td>{{ log.ip_address or '—' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% set endpoint = 'admin.audit' %}
+    {% set extra = {'accion': action} %}
+    {% include "partials/_pagination.html" with context %}
+  {% else %}
+    <div class="card empty-state">
+      <h3>Sin registros</h3>
+      <p class="mb-0">Las acciones administrativas se registrarán aquí automáticamente.</p>
+    </div>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends "partials/_dashboard.html" %}
+{% block title %}{{ 'Gestionar familia' if parent else 'Nueva familia' }}{% endblock %}
+{% from "partials/_macros.html" import csrf_field %}
+
+{% block sidebar %}{% include "partials/_sidebar_admin.html" %}{% endblock %}
+
+{% block panel %}
+  <ul class="breadcrumb">
+    <li><a href="{{ url_for('admin.parents') }}">Familias</a></li>
+    <li>{{ parent.user.full_name if parent else 'Nueva familia' }}</li>
+  </ul>
+
+  <div class="page-head">
+    <div>
+      <h1>{{ 'Gestionar familia' if parent else 'Registrar familia' }}</h1>
+      <p>Los tutores sólo visualizan la información de los estudiantes vinculados.</p>
+    </div>
+  </div>
+
+  <form class="card" method="post" novalidate>
+    {{ csrf_field() }}
+    <div class="form-grid">
+      <div class="field field--full">
+        <label for="full_name">Nombre completo del tutor <span aria-hidden="true">*</span></label>
+        <input type="text" id="full_name" name="full_name" value="{{ form.full_name }}" required maxlength="160">
+      </div>
+      <div class="field">
+        <label for="email">Correo electrónico <span aria-hidden="true">*</span></label>
+        <input type="email" id="email" name="email" value="{{ form.email }}" required maxlength="180">
+      </div>
+      <div class="field">
+        <label for="phone">Teléfono</label>
+        <input type="tel" id="phone" name="phone" value="{{ form.phone }}" maxlength="40">
+      </div>
+      <div class="field">
+        <label for="relationship">Vínculo con el estudiante</label>
+        <select id="relationship" name="relationship">
+          {% for option in ['Madre', 'Padre', 'Tutor', 'Apoderado', 'Abuelo(a)', 'Otro'] %}
+            <option value="{{ option }}" {% if form.relationship == option %}selected{% endif %}>{{ option }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="occupation">Ocupación</label>
+        <input type="text" id="occupation" name="occupation" value="{{ form.occupation }}" maxlength="120">
+      </div>
+      <div class="field field--full">
+        <label for="address">Dirección</label>
+        <input type="text" id="address" name="address" value="{{ form.address }}" maxlength="200">
+      </div>
+
+      {% if not parent %}
+        <div class="field">
+          <label for="password">Contraseña inicial <span aria-hidden="true">*</span></label>
+          <input type="password" id="password" name="password" required
+                 minlength="{{ config.PASSWORD_MIN_LENGTH }}" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label for="confirm_password">Confirmar contraseña <span aria-hidden="true">*</span></label>
+          <input type="password" id="confirm_password" name="confirm_password" required
+                 minlength="{{ config.PASSWORD_MIN_LENGTH }}" autocomplete="new-password">
+        </div>
+        <div class="field field--full">
+          <label for="student_ids">Vincular estudiantes</label>
+          <select id="student_ids" name="student_ids" multiple size="6">
+            {% for student in students %}
+              <option value="{{ student.id }}">{{ student.full_name }} — {{ student.code }}</option>
+            {% endfor %}
+          </select>
+          <span class="hint">Mantenga presionada la tecla Ctrl para seleccionar varios.</span>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">
+        {{ 'Guardar cambios' if parent else 'Registrar familia' }}
+      </button>
+      <a class="btn btn--ghost" href="{{ url_for('admin.parents') }}">Cancelar</a>
+    </div>
+  </form>
+
+  {% if parent %}
+    <div class="grid grid--2 mt-2">
+      <div class="card">
+        <h2 class="card__title">Estudiantes vinculados</h2>
+        {% if linked %}
+          <ul class="stack small">
+            {% for student in linked %}
+              <li class="row row--between">
+                <span>
+                  {{ student.full_name }}
+                  {% if student.current_course %}<br><span class="muted">{{ student.current_course.label }}</span>{% endif %}
+                </span>
+                <form method="post"
+                      action="{{ url_for('admin.parent_unlink', parent_id=parent.id, student_id=student.id) }}"
+                      data-confirm="¿Desvincular a {{ student.full_name }} de esta familia?">
+                  {{ csrf_field() }}
+                  <button class="btn btn--danger btn--sm" type="submit">Desvincular</button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="small muted mb-0">No hay estudiantes vinculados.</p>
+        {% endif %}
+      </div>
+
+      <form class="card" method="post" action="{{ url_for('admin.parent_link', parent_id=parent.id) }}">
+        {{ csrf_field() }}
+        <h2 class="card__title">Vincular un estudiante</h2>
+        <div class="field">
+          <label for="student_id">Estudiante</label>
+          <select id="student_id" name="student_id" required>
+            <option value="">Seleccione un estudiante</option>
+            {% for student in students %}
+              <option value="{{ student.id }}">{{ student.full_name }} — {{ student.code }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="link_relationship">Vínculo</label>
+          <input type="text" id="link_relationship" name="relationship"
+                 value="{{ parent.relationship or 'Tutor' }}" maxlength="40">
+        </div>
+        <div class="form-actions">
+          <button class="btn btn--primary btn--sm" type="submit">Vincular</button>
+        </div>
+        <p class="small muted mb-0">Sólo los estudiantes vinculados serán visibles para este tutor.</p>
+      </form>
+    </div>
+
+    <div class="card mt-2">
+      <h2 class="card__title">Estado de la cuenta</h2>
+      <p class="small muted mb-0">
+        Para activar o desactivar el acceso de esta familia, utilice la sección
+        <a href="{{ url_for('admin.users', q=parent.user.email) }}">Usuarios y roles</a>.
+      </p>
+    </div>
+  {% endif %}
+{% endblock %}
+
