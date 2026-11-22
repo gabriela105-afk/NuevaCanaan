@@ -456,9 +456,41 @@ SETTING_DEFAULTS: dict[str, str] = {
         "Nueva Canaán, un espacio de comunicación entre la institución y las familias."
     ),
     "presentacion": "",
-    "mision": "",
-    "vision": "",
-    "historia": "",
+    "mision": (
+        "Ser una institución educativa que ofrece a la comunidad Nueva Canaán, "
+        "una experiencia educativa innovadora, actualizada y tecnológica dentro de "
+        "una comunidad educativa con ambiente de respeto de valores, donde se educa "
+        "y se prepara para la vida; ofreciendo procesos educativos integrales de "
+        "calidad basada en la formación en valores, excelencia académica, científica "
+        "y tecnológica; que promueva el cambio social y fomente el desarrollo pleno "
+        "de los estudiantes."
+    ),
+    "vision": (
+        "Ser una institución educativa que contribuye en la formación integral de "
+        "sus estudiantes basada en vivencia de valores, excelencia académica, "
+        "científica y tecnológica; comprometida con la sociedad y la transformación "
+        "social, que contribuye en la formación de agentes de cambio capaces, "
+        "conscientes, comprometidos entre sí y con la naturaleza."
+    ),
+    "historia": (
+        "La Unidad Educativa “Nueva Canaán”, esta ubicada en la comunidad Senda B, "
+        "al norte de la carretera troncal entre Cochabamba y Santa Cruz, en el Km. "
+        "191 y a 4 Km. De la población de Chimoré de la cuarta sección Municipal de "
+        "la Provincia Carrasco del Distrito V. con un clima cálido que fluctúa entre "
+        "28 y 35 grados. La Unidad Educativa fue creada por Ley de la República de "
+        "Bolivia N° 633 del 13 de septiembre de 1984, durante el Gobierno "
+        "Constitucional del Dr. Hernán Siles Suazo."
+        "\n\n"
+        "La Unidad Educativa “Nueva Canaán”, fue fundada el 2 de junio de 1965. "
+        "Desde el 12 de junio del año 2000, cuenta con Resolución Administrativa y "
+        "con SIE 50870015 con fecha 4/12/2012, para su legal funcionamiento del "
+        "nivel inicial y nivel primario. En fecha 4/06/2010 se cuenta con Resolución "
+        "Administrativa para el nivel secundario de 1° de secundaria a 6° de "
+        "Secundaria, desde el año 2023 la Unidad Educativa cuenta con el BTH "
+        "(Bachillerato Técnico Humanístico) con la especialidad Sistemas "
+        "Informáticos. Desde la gestión 2024 cuenta con 24 maestros y maestras en "
+        "el plantel docente y un administrativo."
+    ),
     "valores": "",
     "direccion": "",
     "telefono": "",
@@ -476,6 +508,11 @@ SETTING_DEFAULTS: dict[str, str] = {
         "autorizados mediante credenciales personales."
     ),
 }
+
+# Textos institucionales con contenido predeterminado: una fila vacía en la
+# base de datos no debe ocultarlos. Si el panel administrativo guarda un valor,
+# ese valor reemplaza al predeterminado.
+INSTITUTION_TEXT_SETTINGS = ("mision", "vision", "historia")
 
 SETTING_LABELS: dict[str, str] = {
     "nombre_colegio": "Nombre oficial del establecimiento",
@@ -504,11 +541,19 @@ REQUIRED_SETTINGS = ("direccion", "telefono", "correo", "horario_atencion")
 
 
 def load_settings() -> dict[str, str]:
-    """Ajustes institucionales combinados con los valores por defecto."""
+    """Ajustes institucionales combinados con los valores por defecto.
+
+    Para los textos con contenido predeterminado, una fila vacía o con sólo
+    espacios no sobrescribe el valor por defecto: así se muestran los textos
+    institucionales mientras la dirección no los complete en el panel.
+    """
     values = dict(SETTING_DEFAULTS)
     for row in InstitutionSetting.query.all():
-        if row.value is not None:
-            values[row.key] = row.value
+        if row.value is None:
+            continue
+        if row.key in INSTITUTION_TEXT_SETTINGS and not row.value.strip():
+            continue
+        values[row.key] = row.value
     return values
 
 
