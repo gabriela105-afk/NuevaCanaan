@@ -80,36 +80,83 @@ def active_backend() -> str:
     return STORAGE_SUPABASE if supabase_configured() else STORAGE_LOCAL
 
 
+# Prefijos de la API REST/Storage que a veces se copian por error en
+# SUPABASE_URL. Si se envían, la petición de Storage termina en PostgREST y
+# éste responde PGRST125: «Invalid path specified in request URL».
+_API_PATH_MARKERS = ("/rest/v1", "/storage/v1", "/auth/v1")
+
+
+def _normalize_supabase_url(value: str) -> str:
+    """Devuelve la URL base del proyecto, sin sufijos de API ni barra final.
+
+    Supabase muestra en su panel varias URLs (``/rest/v1``, ``/storage/v1``,
+    ``/auth/v1``). Para Storage sólo sirve la raíz del proyecto, por ejemplo
+    ``https://abcdefgh.supabase.co``. Esta función tolera que se haya pegado
+    una de esas variantes y evita enviar la subida al servicio equivocado.
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        raise StorageError("SUPABASE_URL no está definido.")
+
+    parts = urlparse.urlsplit(raw)
+    if parts.scheme.lower() not in {"http", "https"} or not parts.netloc:
+        raise StorageError(
+            "SUPABASE_URL no es una URL válida. Use la URL base del proyecto, "
+            "por ejemplo https://<proyecto>.supabase.co"
+        )
+
+    path = parts.path.rstrip("/")
+    lowered = path.lower()
+    for marker in _API_PATH_MARKERS:
+        index = lowered.find(marker)
+        if index != -1:
+            path = path[:index]
+            break
+
+    return urlparse.urlunsplit(
+        (parts.scheme.lower(), parts.netloc, path.rstrip("/"), "", "")
+    )
+
+
 def _supabase_credentials() -> tuple[str, str, str]:
     if not supabase_configured():
         raise StorageError(
             "Supabase Storage no está configurado. Defina SUPABASE_URL, "
             "SUPABASE_SERVICE_KEY y SUPABASE_STORAGE_BUCKET (ver .env.example)."
         )
-    base = str(_config("SUPABASE_URL")).rstrip("/")
-    key = str(_config("SUPABASE_SERVICE_KEY"))
-    bucket = str(_config("SUPABASE_STORAGE_BUCKET"))
-    if not bucket:
-        raise StorageError("SUPABASE_STORAGE_BUCKET está vacío.")
+    base = _normalize_supabase_url(str(_config("SUPABASE_URL")))
+    key = str(_config("SUPABASE_SERVICE_KEY")).strip()
+    bucket = str(_config("SUPABASE_STORAGE_BUCKET")).strip().strip("/")
+    if not key:
+        raise StorageError("SUPABASE_SERVICE_KEY está vacío.")
+    if not bucket or "/" in bucket:
+        raise StorageError(
+            "SUPABASE_STORAGE_BUCKET debe ser el nombre del bucket "
+            "(por ejemplo nueva-canaan), sin barras."
+        )
     return base, key, bucket
 
 
 def _object_name(path: str) -> str:
     """Ruta interna dentro del bucket (incluye el prefijo configurado)."""
-    prefix = str(_config("SUPABASE_STORAGE_PREFIX", "") or "").strip("/")
-    clean_path = str(path or "").strip("/")
-    return f"{prefix}/{clean_path}" if prefix else clean_path
+    prefix = str(_config("SUPABASE_STORAGE_PREFIX", "") or "").strip().strip("/")
+    clean_path = str(path or "").strip().strip("/")
+    name = f"{prefix}/{clean_path}" if prefix else clean_path
+    parts = [part for part in name.split("/") if part not in {"", "."}]
+    if not parts or any(part == ".." for part in parts):
+        raise StorageError("Ruta de archivo no válida para Supabase Storage.")
+    return "/".join(parts)
 
 
-def _quote(value: str) -> str:
-    return urlparse.quote(value, safe="/")
+def _quote(value: str, safe: str = "/") -> str:
+    return urlparse.quote(value, safe=safe)
 
 
 def public_url(path: str) -> str:
     """URL pública de lectura del objeto (requiere bucket público)."""
     base, _key, bucket = _supabase_credentials()
     return (
-        f"{base}/storage/v1/object/public/{_quote(bucket)}/"
+        f"{base}/storage/v1/object/public/{_quote(bucket, safe='')}/"
         f"{_quote(_object_name(path))}"
     )
 
@@ -140,12 +187,20 @@ def _error_message(body: bytes, status: int) -> str:
         text = body.decode("utf-8", "replace").strip()
         return text[:300] or f"Supabase Storage respondió HTTP {status}."
     if isinstance(payload, dict):
-        return str(
+        message = str(
             payload.get("message")
             or payload.get("error")
             or payload.get("statusCode")
             or f"HTTP {status}"
         )[:300]
+        if payload.get("code") == "PGRST125" or "Invalid path specified" in message:
+            return (
+                "Supabase respondió PGRST125 (ruta no válida). Verifique que "
+                "SUPABASE_URL sea la URL base del proyecto, por ejemplo "
+                "https://<proyecto>.supabase.co, sin /rest/v1 ni /storage/v1. "
+                f"Respuesta original: {message}"
+            )
+        return message
     return f"Supabase Storage respondió HTTP {status}."
 
 
@@ -190,7 +245,9 @@ def store_bytes(data: bytes, filename: str, subfolder: str, mime: str,
 
     base, _key, bucket = _supabase_credentials()
     object_name = _object_name(relative_path)
-    endpoint = f"{base}/storage/v1/object/{_quote(bucket)}/{_quote(object_name)}"
+    endpoint = (
+        f"{base}/storage/v1/object/{_quote(bucket, safe='')}/{_quote(object_name)}"
+    )
     status, body = _http_request(
         "POST",
         endpoint,
@@ -204,9 +261,15 @@ def store_bytes(data: bytes, filename: str, subfolder: str, mime: str,
         data=data,
     )
     if status not in (200, 201):
+        message = _error_message(body, status)
+        logger.error(
+            "Supabase Storage rechazó la subida (%s) en %s: %s",
+            status,
+            endpoint,
+            message,
+        )
         raise StorageError(
-            "No se pudo subir la fotografía a Supabase Storage: "
-            f"{_error_message(body, status)}"
+            f"No se pudo subir la fotografía a Supabase Storage: {message}"
         )
 
     is_public = bool(_config("SUPABASE_STORAGE_PUBLIC", True))
@@ -245,7 +308,10 @@ def delete_object(storage: str | None, path: str | None) -> None:
     except StorageError:
         logger.warning("No se puede borrar en Supabase (sin credenciales): %s", path)
         return
-    endpoint = f"{base}/storage/v1/object/{_quote(bucket)}/{_quote(_object_name(path))}"
+    endpoint = (
+        f"{base}/storage/v1/object/{_quote(bucket, safe='')}/"
+        f"{_quote(_object_name(path))}"
+    )
     try:
         status, body = _http_request("DELETE", endpoint, headers=_auth_headers())
     except StorageError:  # pragma: no cover - red no disponible
@@ -264,7 +330,7 @@ def signed_url(path: str, expires_in: int = 3600) -> str | None:
     except StorageError:
         return None
     endpoint = (
-        f"{base}/storage/v1/object/sign/{_quote(bucket)}/"
+        f"{base}/storage/v1/object/sign/{_quote(bucket, safe='')}/"
         f"{_quote(_object_name(path))}"
     )
     body = json.dumps({"expiresIn": max(60, int(expires_in))}).encode("utf-8")
@@ -340,7 +406,7 @@ def storage_status() -> dict:
         status["probe"] = str(error)
         return status
 
-    endpoint = f"{base}/storage/v1/bucket/{_quote(bucket)}"
+    endpoint = f"{base}/storage/v1/bucket/{_quote(bucket, safe='')}"
     try:
         code, body = _http_request("GET", endpoint, headers=_auth_headers())
     except StorageError as error:

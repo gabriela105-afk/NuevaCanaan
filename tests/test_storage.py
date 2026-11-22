@@ -61,6 +61,90 @@ def test_supabase_upload_uses_bucket_and_stores_relative_path(app, monkeypatch):
     assert calls[0]["data"] == PNG_BYTES
 
 
+@pytest.mark.parametrize(
+    ("configured_url", "expected_base"),
+    [
+        ("https://proyecto.supabase.co", "https://proyecto.supabase.co"),
+        ("https://proyecto.supabase.co/", "https://proyecto.supabase.co"),
+        ("https://proyecto.supabase.co/rest/v1", "https://proyecto.supabase.co"),
+        ("https://proyecto.supabase.co/rest/v1/", "https://proyecto.supabase.co"),
+        (
+            "https://proyecto.supabase.co/storage/v1/object",
+            "https://proyecto.supabase.co",
+        ),
+        (
+            "https://api.example.com/supabase",
+            "https://api.example.com/supabase",
+        ),
+    ],
+)
+def test_supabase_url_is_normalized_to_project_root(configured_url, expected_base):
+    assert storage._normalize_supabase_url(configured_url) == expected_base
+
+
+def test_invalid_supabase_url_reports_a_clear_error():
+    with pytest.raises(storage.StorageError, match="no es una URL válida"):
+        storage._normalize_supabase_url("proyecto.supabase.co")
+
+
+@pytest.mark.parametrize(
+    "configured_url",
+    [
+        "https://proyecto.supabase.co/rest/v1",
+        "https://proyecto.supabase.co/rest/v1/",
+        "https://proyecto.supabase.co/storage/v1",
+    ],
+)
+def test_upload_url_ignores_api_suffix_in_supabase_url(
+    app, monkeypatch, configured_url
+):
+    calls = []
+
+    def fake_request(method, url, headers=None, data=None, timeout=None):
+        calls.append({"method": method, "url": url})
+        return 200, b"{}"
+
+    monkeypatch.setattr(storage, "_http_request", fake_request)
+
+    with app.app_context():
+        app.config.update(SUPABASE_CONFIG)
+        app.config["SUPABASE_URL"] = configured_url
+        stored = storage.store_bytes(
+            PNG_BYTES, "foto.png", "posts", "image/png", extension="png"
+        )
+
+    assert calls[0]["url"] == (
+        "https://proyecto.supabase.co/storage/v1/object/"
+        f"nueva-canaan/{stored.path}"
+    )
+    assert stored.url == (
+        "https://proyecto.supabase.co/storage/v1/object/public/"
+        f"nueva-canaan/{stored.path}"
+    )
+
+
+def test_bucket_name_is_stripped_of_surrounding_slashes(app, monkeypatch):
+    calls = []
+
+    def fake_request(method, url, headers=None, data=None, timeout=None):
+        calls.append({"method": method, "url": url})
+        return 200, b"{}"
+
+    monkeypatch.setattr(storage, "_http_request", fake_request)
+
+    with app.app_context():
+        app.config.update(SUPABASE_CONFIG)
+        app.config["SUPABASE_STORAGE_BUCKET"] = "/nueva-canaan/"
+        stored = storage.store_bytes(
+            PNG_BYTES, "foto.png", "posts", "image/png", extension="png"
+        )
+
+    assert calls[0]["url"] == (
+        "https://proyecto.supabase.co/storage/v1/object/"
+        f"nueva-canaan/{stored.path}"
+    )
+
+
 def test_private_bucket_stores_no_public_url_and_signs_on_display(app, monkeypatch):
     calls = []
 
@@ -107,6 +191,21 @@ def test_supabase_error_is_reported_instead_of_saving_locally(app, monkeypatch):
     with app.app_context():
         app.config.update(SUPABASE_CONFIG)
         with pytest.raises(storage.StorageError, match="Bucket not found"):
+            storage.store_bytes(PNG_BYTES, "foto.png", "posts", "image/png")
+
+
+def test_postgrest_invalid_path_error_explains_url_configuration(app, monkeypatch):
+    def fake_request(method, url, headers=None, data=None, timeout=None):
+        return (
+            400,
+            b'{"code":"PGRST125","message":"Invalid path specified in request URL"}',
+        )
+
+    monkeypatch.setattr(storage, "_http_request", fake_request)
+
+    with app.app_context():
+        app.config.update(SUPABASE_CONFIG)
+        with pytest.raises(storage.StorageError, match="sin /rest/v1"):
             storage.store_bytes(PNG_BYTES, "foto.png", "posts", "image/png")
 
 

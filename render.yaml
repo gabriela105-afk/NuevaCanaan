@@ -50,6 +50,8 @@ services:
       - key: ADMIN_NAME
         sync: false
       # Supabase Storage para que las fotografías sobrevivan a los despliegues.
+      # SUPABASE_URL es la URL BASE del proyecto
+      # (https://<ref>.supabase.co), NO la de /rest/v1 ni /storage/v1.
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_KEY

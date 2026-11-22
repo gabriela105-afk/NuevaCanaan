@@ -149,13 +149,24 @@ Se conserva el mismo repositorio y el mismo servicio de Render:
 
 El sistema de archivos del plan gratuito de Render es **efímero**:
 
-- Si `DATABASE_URL` apunta a Supabase/PostgreSQL, las publicaciones persisten entre despliegues. Las fotografías siguen en el disco efímero y se pierden al redesplegar.
-- Para conservar también las fotografías se necesita un **disco persistente** (plan de pago):
+- Si `DATABASE_URL` apunta a Supabase/PostgreSQL, las publicaciones persisten entre despliegues.
+- Las fotografías nuevas se guardan en **Supabase Storage** cuando están definidos
+  `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` y `SUPABASE_STORAGE_BUCKET`. El backend se
+  activa con `STORAGE_BACKEND=supabase`.
+- `SUPABASE_URL` debe ser la **URL base del proyecto**
+  (`https://<ref>.supabase.co`), sin `/rest/v1` ni `/storage/v1`. El código tolera
+  esos sufijos, pero la configuración correcta evita errores de ruta.
+- El bucket puede ser privado: con `SUPABASE_STORAGE_PUBLIC=false` la aplicación
+  genera URLs firmadas temporales para mostrar las fotografías.
+- Las fotografías antiguas con `storage='local'` no se migran automáticamente:
+  sus archivos vivían en el disco efímero y pueden haberse perdido.
+- Alternativa con **disco persistente** (plan de pago):
   1. Descomentar el bloque `disk` de `render.yaml`.
-  2. Definir `UPLOAD_FOLDER=/var/data/uploads`.
+  2. Definir `UPLOAD_FOLDER=/var/data/uploads` y `STORAGE_BACKEND=local`.
 - Si se desea SQLite persistente en ese disco, definir además:
   `DATABASE_URL=sqlite:////var/data/nueva_canaan.db`.
-- Si no se configura nada, la aplicación funciona, pero la base y las fotos pueden perderse al redesplegar en el plan gratuito.
+- Si no se configura nada, la aplicación funciona, pero la base y las fotos pueden
+  perderse al redesplegar en el plan gratuito.
 
 ## Limpieza realizada
 
