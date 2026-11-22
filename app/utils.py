@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from time import sleep
 
 from flask import current_app
-from werkzeug.utils import secure_filename
 
 MONTHS_ES = [
     "enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -51,29 +48,18 @@ def upload_path(relative_path: str) -> Path:
     return target
 
 
-def delete_upload(relative_path: str | None) -> None:
-    """Borra una fotografía del disco sin propagar errores de archivo.
-
-    En Windows el archivo puede estar bloqueado unos instantes si el navegador
-    lo está descargando; se reintenta antes de registrar la advertencia.
-    """
+def delete_upload(relative_path: str | None, storage: str = "local") -> None:
+    """Borra una fotografía del backend indicado sin propagar errores."""
     if not relative_path:
         return
+    from .storage import delete_object
+
     try:
-        path = upload_path(relative_path)
-    except ValueError:  # pragma: no cover - ruta manipulada
-        current_app.logger.warning("Ruta de archivo no válida: %s", relative_path)
-        return
-    for _ in range(4):
-        try:
-            if path.is_file():
-                path.unlink()
-            return
-        except PermissionError:
-            sleep(0.1)
-        except OSError:  # pragma: no cover - tolerante a fallos de disco
-            break
-    current_app.logger.warning("No se pudo borrar el archivo %s", relative_path)
+        delete_object(storage, relative_path)
+    except Exception:  # pragma: no cover - tolerante a fallos de almacenamiento
+        current_app.logger.warning(
+            "No se pudo borrar la fotografía %s (%s)", relative_path, storage
+        )
 
 
 def _image_format(data: bytes) -> str | None:
@@ -88,11 +74,12 @@ def _image_format(data: bytes) -> str | None:
 
 
 def save_image_upload(file_storage, subfolder: str = "posts"):
-    """Valida y guarda una fotografía.
+    """Valida y guarda una fotografía en el backend activo.
 
     Comprueba extensión, tamaño y firma binaria (sin Pillow). Devuelve
-    ``(metadata, error)``; ``metadata`` contiene la ruta relativa a
-    ``UPLOAD_FOLDER``, el nombre original, el MIME y el tamaño.
+    ``(metadata, error)``; ``metadata`` contiene ``storage`` (supabase o local),
+    ``path`` (ruta interna del backend), ``url``, el nombre original, el MIME y
+    el tamaño.
     """
     if file_storage is None or not file_storage.filename:
         return None, None
@@ -119,22 +106,16 @@ def save_image_upload(file_storage, subfolder: str = "posts"):
         "webp": "image/webp",
     }[extension]
 
-    safe_base = secure_filename(display_name.rsplit(".", 1)[0])[:40] or "foto"
-    stored_name = f"{safe_base}-{uuid.uuid4().hex[:10]}.{extension}"
-    folder = Path(current_app.config["UPLOAD_FOLDER"]) / subfolder
-    folder.mkdir(parents=True, exist_ok=True)
-    (folder / stored_name).write_bytes(data)
+    from .storage import StorageError, store_bytes
 
-    return (
-        {
-            "path": f"{subfolder}/{stored_name}",
-            "name": display_name,
-            "mime": mime,
-            "size": len(data),
-            "extension": extension,
-        },
-        None,
-    )
+    try:
+        stored = store_bytes(data, display_name, subfolder, mime, extension=extension)
+    except StorageError as error:
+        current_app.logger.error("Error al guardar la fotografía: %s", error)
+        return None, str(error)
+    metadata = stored.as_metadata()
+    metadata["extension"] = extension
+    return metadata, None
 
 
 def local_datetime(value):

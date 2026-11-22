@@ -101,6 +101,24 @@ def create_app(config_name: str | None = None, overrides: dict | None = None) ->
         "Base de datos en uso: %s",
         mask_database_uri(app.config["SQLALCHEMY_DATABASE_URI"]),
     )
+
+    from .storage import active_backend, supabase_configured
+
+    with app.app_context():
+        backend = active_backend()
+        configured = supabase_configured()
+    app.logger.info(
+        "Almacenamiento de fotografías: backend=%s configurado=%s bucket=%s",
+        backend,
+        configured,
+        app.config.get("SUPABASE_STORAGE_BUCKET") or "(sin definir)",
+    )
+    if backend == "supabase" and not configured:
+        app.logger.error(
+            "STORAGE_BACKEND=supabase pero faltan SUPABASE_URL, "
+            "SUPABASE_SERVICE_KEY o SUPABASE_STORAGE_BUCKET. "
+            "Las fotografías no se podrán guardar."
+        )
     return app
 
 

@@ -97,9 +97,12 @@ Las pruebas cubren:
 - orden de las publicaciones (más recientes primero);
 - eliminación de la publicación y de sus archivos;
 - rechazo de archivos que no son imágenes;
-- respuesta 404 para imágenes inexistentes.
+- respuesta 404 para imágenes inexistentes;
+- subida a Supabase con bucket, ruta relativa y URL correctos;
+- uso de URLs firmadas cuando el bucket es privado;
+- migración aditiva de `post_images` sin perder filas existentes.
 
-Resultado actual: **9 pruebas aprobadas**.
+Resultado actual: **14 pruebas aprobadas**.
 
 ## Base de datos
 
@@ -111,12 +114,27 @@ Resultado actual: **9 pruebas aprobadas**.
 
 ## Fotografías
 
-- Carpeta por defecto: `instance/uploads/`; las publicaciones usan `instance/uploads/posts/`.
-- Se permiten PNG, JPG/JPEG y WEBP.
-- Cada archivo se valida por firma binaria (sin Pillow), se renombra con `secure_filename` + UUID y se guarda en disco.
-- Límites: `MAX_ATTACHMENT_MB=5` por fotografía y `MAX_UPLOAD_MB=8` para el envío completo. Se pueden seleccionar varias fotografías, siempre que el total no supere el límite del envío.
-- Las imágenes se sirven públicamente en `/imagenes/<id>` con caché de una semana.
-- No se redimensionan las imágenes para no agregar dependencias.
+- En producción las fotografías nuevas se guardan en **Supabase Storage**
+  (`SUPABASE_STORAGE_BUCKET`, por defecto `nueva-canaan`) y sobreviven a los
+  reinicios y redespliegues de Render.
+- Variables requeridas en Render: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`,
+  `SUPABASE_STORAGE_BUCKET=nueva-canaan` y `STORAGE_BACKEND=supabase`.
+  `SUPABASE_SERVICE_KEY` es secreta y nunca se incluye en el repositorio.
+- La migración de arranque agrega `storage` y `url` a `post_images` sin borrar
+  filas. Las fotografías anteriores quedan con `storage=local` y siguen
+  mostrándose desde `instance/uploads/` mientras exista el archivo.
+- El bucket `nueva-canaan` puede ser privado. En ese caso
+  `/imagenes/<id>` redirige a una **URL firmada temporal** generada en el
+  servidor; no es necesario hacer público el bucket.
+- Si las variables de Supabase faltan, el arranque registra
+  `Almacenamiento de fotografías: backend=... configurado=False ...` y las
+  subidas fallan con un mensaje visible en lugar de guardar en el disco efímero
+  cuando `STORAGE_BACKEND=supabase`.
+- Se permiten PNG, JPG/JPEG y WEBP. Cada archivo se valida por firma binaria
+  (sin Pillow), se renombra con `secure_filename` + UUID y se guarda en el
+  backend activo.
+- Límites: `MAX_ATTACHMENT_MB=5` por fotografía y `MAX_UPLOAD_MB=8` para el
+  envío completo. No se redimensionan las imágenes para no agregar dependencias.
 
 ## Render y GitHub
 

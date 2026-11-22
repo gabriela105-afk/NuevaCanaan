@@ -101,6 +101,8 @@ def publish():
         post.images.append(
             PostImage(
                 path=metadata["path"],
+                storage=metadata.get("storage", "local"),
+                url=metadata.get("url"),
                 name=metadata["name"],
                 mime=metadata["mime"],
                 size=metadata["size"],
@@ -114,7 +116,7 @@ def publish():
     except Exception:  # pragma: no cover - protección ante fallos de la BD
         db.session.rollback()
         for metadata in saved:
-            delete_upload(metadata["path"])
+            delete_upload(metadata["path"], metadata.get("storage", "local"))
         current_app.logger.exception("No se pudo guardar la publicación")
         flash("No se pudo guardar la publicación. Intente de nuevo.", "error")
         return redirect(url_for("main.index"))
@@ -134,7 +136,7 @@ def delete_post(post_id: int):
         abort(404)
 
     for image in list(post.images):
-        delete_upload(image.path)
+        delete_upload(image.path, image.storage or "local")
 
     db.session.delete(post)
     db.session.commit()
@@ -148,6 +150,12 @@ def image(image_id: int):
     post_image = db.session.get(PostImage, image_id)
     if post_image is None:
         abort(404)
+
+    if (post_image.storage or "local") == "supabase":
+        target = post_image.display_url
+        if not target:
+            abort(404)
+        return redirect(target)
 
     try:
         path = upload_path(post_image.path)

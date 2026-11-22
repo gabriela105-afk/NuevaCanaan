@@ -90,22 +90,36 @@ class PostImage(db.Model):
         nullable=False,
         index=True,
     )
-    path = db.Column(db.String(255), nullable=False)  # relativa a UPLOAD_FOLDER
+    path = db.Column(db.String(255), nullable=False)  # ruta interna del backend
     name = db.Column(db.String(255))
     mime = db.Column(db.String(120))
     size = db.Column(db.Integer)
     position = db.Column(db.Integer, nullable=False, default=0)
+    # ``local`` (UPLOAD_FOLDER) o ``supabase`` (Storage permanente).
+    storage = db.Column(
+        db.String(20), nullable=False, default="local", server_default="local"
+    )
+    url = db.Column(db.String(700))
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
 
     post = db.relationship("Post", back_populates="images")
 
     @property
+    def display_url(self) -> str | None:
+        """URL remota de la fotografía (``None`` si se sirve localmente)."""
+        from .storage import display_url
+
+        return display_url(self.storage, self.path, self.url)
+
+    @property
     def is_available(self) -> bool:
-        """¿El archivo sigue existiendo dentro de UPLOAD_FOLDER?"""
+        """¿La fotografía sigue disponible en su backend?"""
         from flask import current_app
 
         if not self.path:
             return False
+        if (self.storage or "local") == "supabase":
+            return True
         try:
             base = Path(current_app.config["UPLOAD_FOLDER"]).resolve()
             target = (base / self.path).resolve()

@@ -10,14 +10,15 @@
 # idempotente antes de iniciar Gunicorn.
 #
 # PERSISTENCIA
-#   El sistema de archivos de un Web Service gratuito es EFÍMERO. Las fotografías
-#   se pierden al redesplegar salvo que se use un disco persistente (plan de pago):
-#     1) Descomentar el bloque `disk`.
-#     2) Definir UPLOAD_FOLDER=/var/data/uploads en el panel de Render.
-#   Si además se desea SQLite persistente, definir:
+#   El sistema de archivos de un Web Service gratuito es EFÍMERO.
+#   - Fotografías: definir SUPABASE_URL, SUPABASE_SERVICE_KEY y
+#     SUPABASE_STORAGE_BUCKET para guardarlas en Supabase Storage. Si no se
+#     definen, se usa el disco local y se pierden al redesplegar.
+#   - Base de datos: DATABASE_URL apunta a PostgreSQL/Supabase.
+#   - Alternativa sin Supabase Storage (plan de pago): descomentar `disk` y
+#     definir UPLOAD_FOLDER=/var/data/uploads.
+#   - SQLite persistente opcional:
 #     DATABASE_URL=sqlite:////var/data/nueva_canaan.db
-#   Si DATABASE_URL apunta a Supabase/PostgreSQL, las publicaciones persisten sin
-#   necesidad de disco; las fotografías siguen necesitando el disco.
 
 services:
   - type: web
@@ -48,8 +49,17 @@ services:
         sync: false
       - key: ADMIN_NAME
         sync: false
-      # - key: UPLOAD_FOLDER
-      #   value: /var/data/uploads
+      # Supabase Storage para que las fotografías sobrevivan a los despliegues.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: nueva-canaan
+      - key: STORAGE_BACKEND
+        value: supabase
+      - key: SUPABASE_STORAGE_PUBLIC
+        value: "false"
     # --- Sólo con plan de pago (disco persistente para fotografías) ---
     # disk:
     #   name: nueva-canaan-data

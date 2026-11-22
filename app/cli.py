@@ -18,6 +18,7 @@ import click
 
 from .extensions import db
 from .models import Admin
+from .schema import ensure_schema
 
 
 def _ensure_admin() -> str | None:
@@ -48,6 +49,11 @@ def _ensure_admin() -> str | None:
 def bootstrap_database() -> None:
     """Crea el esquema y la cuenta administradora mínima (idempotente)."""
     db.create_all()
+    additions = ensure_schema()
+    if additions:
+        click.echo(
+            "Columnas agregadas a post_images: " + ", ".join(additions)
+        )
     _ensure_admin()
 
 

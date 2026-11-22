@@ -148,6 +148,24 @@ class Config:
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", str(INSTANCE_DIR / "uploads"))
     ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 
+    # --- Almacenamiento permanente de fotografías (Supabase Storage) ---
+    # ``auto`` usa Supabase cuando URL + clave + bucket están definidos; si no,
+    # guarda en UPLOAD_FOLDER (sólo útil en desarrollo).
+    STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "auto").strip().lower()
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
+    SUPABASE_SERVICE_KEY = (
+        os.getenv("SUPABASE_SERVICE_KEY", "").strip()
+        or os.getenv("SUPABASE_KEY", "").strip()
+    )
+    SUPABASE_STORAGE_BUCKET = os.getenv(
+        "SUPABASE_STORAGE_BUCKET", "nueva-canaan"
+    ).strip()
+    SUPABASE_STORAGE_PREFIX = (
+        os.getenv("SUPABASE_STORAGE_PREFIX", "").strip().strip("/")
+    )
+    SUPABASE_STORAGE_PUBLIC = _env_bool("SUPABASE_STORAGE_PUBLIC", False)
+    SUPABASE_TIMEOUT = _env_int("SUPABASE_TIMEOUT", 20)
+
     # --- Identidad ----------------------------------------------------
     INSTITUTION_NAME = "Colegio Técnico Humanístico Nueva Canaán"
     INSTITUTION_SHORT_NAME = "Nueva Canaán"
